@@ -159,6 +159,7 @@ class ReleaseCreateSerializer(serializers.Serializer):
         instance.app_path_owner = validated_data.get('app_path_owner', instance.app_path_owner)
         instance.execution_style = validated_data.get('execution_style', instance.execution_style)
         # instance.co_path = settings.SITE_BASE_CO_PATH + time.strftime('%Y%m%d_%H%M%S')
+        instance.co_status = validated_data.get('co_status', instance.co_status)
         instance.operation_list = json.dumps(validated_data.get('operation_list', json.loads(instance.operation_list)), ensure_ascii=False)
         instance.operation_arguments = json.dumps(validated_data.get('operation_arguments', json.loads(instance.operation_arguments)), ensure_ascii=False)
         instance.update_time = datetime.datetime.now()
@@ -173,6 +174,17 @@ class ReleaseOperationSerializer(serializers.Serializer):
     id = serializers.IntegerField(help_text='应用发布id')
     single_cmd = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=50, help_text='单项操作指令')
     release_version = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=50, help_text='SVN/GIT版本号')
+
+    def validate_id(self, value):
+        if not AppRelease.objects.filter(id=value).exists():
+            raise serializers.ValidationError("id不存在")
+        return value
+
+
+# 应用发布 删除序列化
+class ReleaseDeleteSerializer(serializers.Serializer):
+    id = serializers.IntegerField(help_text='应用发布id')
+    delete_app_file_select = serializers.CharField(max_length=100, help_text='是否删除应用目录,等于delete_app_file表示删除')
 
     def validate_id(self, value):
         if not AppRelease.objects.filter(id=value).exists():

@@ -98,6 +98,8 @@ class AppRelease(models.Model):
     operation_list = models.CharField(max_length=400, verbose_name='操作列表', blank=True, null=True)
     operation_arguments = models.CharField(max_length=4000, verbose_name='操作参数', blank=True, null=True)
     app_backup_path = models.CharField(max_length=400, verbose_name='应用备份目录', blank=True, null=True)
+    release_status = models.CharField(max_length=40, verbose_name='发布状态', default='空闲')
+    release_update_time = models.DateTimeField(auto_now=True, verbose_name='最近一次发布时间', blank=True, null=True)
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='最近一次更新时间')
     description = models.CharField(max_length=500, verbose_name='描述备注', blank=True, null=True)

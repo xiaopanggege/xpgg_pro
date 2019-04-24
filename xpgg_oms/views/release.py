@@ -30,6 +30,7 @@ logger = logging.getLogger('xpgg_oms.views')
 class AppReleaseFilter(django_filters.rest_framework.FilterSet):
     minion_id = django_filters.CharFilter(field_name='minion_list', lookup_expr='icontains')
     app_name = django_filters.CharFilter(field_name='app_name', lookup_expr='icontains')
+    # 匹配操作参数中的内容，主要是用来匹配svn/git的url的，因为有时候需要通过这个查询应用，但其实这个可以查询所有操作参数内容
     app_url = django_filters.CharFilter(field_name='operation_arguments', lookup_expr='icontains')
 
     class Meta:
@@ -37,14 +38,19 @@ class AppReleaseFilter(django_filters.rest_framework.FilterSet):
         fields = ['app_name', 'minion_id', 'app_url']
 
 
-# 应用发布：查询添加删除应用
+# 应用发布：查询添加应用
 class ReleaseModelViewSet(mixins.ListModelMixin, mixins.UpdateModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
     """
     list:
         应用信息列表
 
     create:
-        创建应用，比较复杂，先不描述
+        创建应用，按需求传递相关参数，主要是operation_arguments参数的传递需要前端配合
+        目前我设计是前端每个都以字段都传递过来比如svn地址、应用停止命令等，然后我序列化里
+        对这些字段整合到operation_arguments参数里存入数据库
+
+    update:
+        更新应用，类似创建
 
     """
     queryset = AppRelease.objects.all()
@@ -87,15 +93,187 @@ class ReleaseModelViewSet(mixins.ListModelMixin, mixins.UpdateModelMixin, mixins
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         if serializer.is_valid():
-            self.perform_update(serializer)
+            # 判断有没有更新svn/git相关信息，如果有要删除对应的检出目录，因为如果不删重新检出的时候会存在很多问题，比如旧文件无法被删除导致检出失败
+            old_opt_arg = json.loads(instance.operation_arguments)
+            new_opt_arg = serializer.validated_data.get('operation_arguments')
+            co_status = instance.co_status
+            co_path = instance.co_path
+            old_app_svn_url = old_opt_arg.get('app_svn_url')
+            old_app_git_url = old_opt_arg.get('app_git_url')
+            old_app_git_user = old_opt_arg.get('app_git_user')
+            old_app_git_password = old_opt_arg.get('app_git_password')
+            old_app_git_branch = old_opt_arg.get('app_git_branch')
+            new_app_svn_url = new_opt_arg.get('app_svn_url')
+            new_app_git_url = new_opt_arg.get('app_git_url')
+            new_app_git_user = new_opt_arg.get('app_git_user')
+            new_app_git_password = new_opt_arg.get('app_git_password')
+            new_app_git_branch = new_opt_arg.get('app_git_branch')
+            if old_app_svn_url == new_app_svn_url and old_app_git_url == new_app_git_url and old_app_git_user == new_app_git_user and old_app_git_password == new_app_git_password and old_app_git_branch == new_app_git_branch:
+                # 下面的源码内容
+                self.perform_update(serializer)
+                if getattr(instance, '_prefetched_objects_cache', None):
+                    # If 'prefetch_related' has been applied to a queryset, we need to
+                    # forcibly invalidate the prefetch cache on the instance.
+                    instance._prefetched_objects_cache = {}
 
-            if getattr(instance, '_prefetched_objects_cache', None):
-                # If 'prefetch_related' has been applied to a queryset, we need to
-                # forcibly invalidate the prefetch cache on the instance.
-                instance._prefetched_objects_cache = {}
+                response_data = {'results': '更新成功', 'status': True}
+                return Response(response_data)
+            else:
+                if co_status is True:
+                    result = {'results': '', 'status': False}
+                    with requests.Session() as s:
+                        saltapi = SaltAPI(session=s)
+                        response_data = saltapi.file_remove_api(tgt=settings.SITE_SALT_MASTER, arg=[co_path])
+                        if response_data['status'] is False:
+                            result['results'] = '更新应用在删除应用原检出内容时失败，%s' % response_data['results']
+                            return Response(result)
+                        else:
+                            response_data = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
+                            if response_data is True:
+                                # 删除成功后提交更新，记得把co_status检出状态还原为False,
+                                # 检出目录还是不变，在做发布的时候会重新自动创建出来不用担心
+                                aa = serializer.save(co_status=False)
+                                if getattr(instance, '_prefetched_objects_cache', None):
+                                    # If 'prefetch_related' has been applied to a queryset, we need to
+                                    # forcibly invalidate the prefetch cache on the instance.
+                                    instance._prefetched_objects_cache = {}
 
-            response_data = {'results': '更新成功', 'status': True}
+                                response_data = {'results': '更新成功', 'status': True}
+                                return Response(response_data)
+                            else:
+                                result['results'] = '更新应用在删除应用原检出内容时API返回结果错误：' + str(response_data)
+                                return Response(result)
+                else:
+                    # 下面的源码内容
+                    self.perform_update(serializer)
+                    if getattr(instance, '_prefetched_objects_cache', None):
+                        # If 'prefetch_related' has been applied to a queryset, we need to
+                        # forcibly invalidate the prefetch cache on the instance.
+                        instance._prefetched_objects_cache = {}
+
+                    response_data = {'results': '更新成功', 'status': True}
+                    return Response(response_data)
+        else:
+            response_data = {'results': serializer.errors, 'status': False}
             return Response(response_data)
+
+
+# 应用发布：删除应用
+class ReleaseDeleteViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
+    """
+
+    create:
+        删除应用，因为不是单纯的删除数据库记录，所以需要用post来处理并接收相关参数
+        接收id和delete_app_file_select，delete_app_file_select值为delete_app_file表示删除应用目录
+
+
+    """
+    queryset = AppRelease.objects.all()
+    serializer_class = release_serializers.ReleaseDeleteSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            instance = AppRelease.objects.get(id=serializer.validated_data.get('id'))
+            delete_app_file_select = serializer.validated_data.get('delete_app_file_select')
+            result = {'results': None, 'status': False}
+            try:
+                co_path = instance.co_path
+                app_path = instance.app_path
+                app_backup_path = instance.app_backup_path
+                minion_id_list = instance.minion_list.split(',')
+
+                # 应用发布组为开发，先注释
+                # app_group_exist = AppGroup.objects.filter(
+                #     app_group_members__regex=r'^%s$|^%s,|,%s$|,%s,' % (app_name, app_name, app_name, app_name)).exists()
+                # if app_group_exist:
+                #     result['result'] = '该应用属于应用发布组的成员，请先从应用发布组中踢除该应用，再执行删除操作'
+                #     return Response(result)
+
+                with requests.Session() as s:
+                    saltapi = SaltAPI(session=s)
+                    # 判断一下检出的目录是否存在，因为如果没发布过，目录还没生成，存在的话删除项目的时候要顺带删除
+                    response_data = saltapi.file_directory_exists_api(tgt=settings.SITE_SALT_MASTER,
+                                                                      arg=[co_path])
+                    # 当调用api失败的时候会返回false
+                    if response_data['status'] is False:
+                        result['results'] = '删除应用失败error(1)，%s' % response_data['results']
+                        return Response(result)
+                    else:
+                        response_data = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
+                        if response_data is True:
+                            # 删除master端项目的检出目录
+                            response_data = saltapi.file_remove_api(tgt=settings.SITE_SALT_MASTER,
+                                                                    arg=[co_path])
+                            # 当调用api失败的时候会返回false
+                            if response_data['status'] is False:
+                                result['results'] = '删除应用失败error(2)，%s' % response_data['results']
+                                return Response(result)
+                            else:
+                                response_data = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
+                                if response_data is True:
+                                    pass
+                                else:
+                                    result['results'] = '删除应用失败error(3)：' + str(response_data['results'])
+                                    return Response(result)
+                    if delete_app_file_select == 'delete_app_file':
+                        for minion in minion_id_list:
+                            # 删除应用目录
+                            response_data = saltapi.file_directory_exists_api(tgt=minion, arg=[app_path])
+                            # 当调用api失败的时候会返回false
+                            if response_data['status'] is False:
+                                result['results'] = 'Minion ID:%s 删除应用时删除应用目录失败error(1)，%s' % (
+                                    minion, response_data['results'])
+                                return Response(result)
+                            else:
+                                response_data = response_data['results']['return'][0][minion]
+                                # 判断一下svn检出的目录是否存在，因为如果没发布过，目录还没生成，存在的话删除项目的时候要顺带删除
+                                if response_data is True:
+                                    response_data = saltapi.file_remove_api(tgt=minion, arg=[app_path])
+                                    # 当调用api失败的时候会返回false
+                                    if response_data['status'] is False:
+                                        result['results'] = 'Minion ID:%s 删除应用时删除应用目录失败error(2)，%s' % (
+                                            minion, response_data['results'])
+                                        return Response(result)
+                                    else:
+                                        response_data = response_data['results']['return'][0][minion]
+                                        if response_data is True:
+                                            pass
+                                        else:
+                                            result['results'] = 'Minion ID:%s 删除应用时删除应用目录结果错误error(1)，%s' % (
+                                                minion, str(response_data['results']))
+                                            return Response(result)
+                            # 删除备份目录
+                            response_data = saltapi.file_directory_exists_api(tgt=minion, arg=[app_backup_path])
+                            if response_data['status'] is False:
+                                result['results'] = 'Minion ID:%s 删除应用时删除应用备份目录失败error(1)，%s' % (
+                                    minion, response_data['results'])
+                                return Response(result)
+                            else:
+                                response_data = response_data['results']['return'][0][minion]
+                                # 判断一下检出的目录是否存在，因为如果没发布过，目录还没生成，存在的话删除项目的时候要顺带删除
+                                if response_data is True:
+                                    response_data = saltapi.file_remove_api(tgt=minion, arg=[app_backup_path])
+                                    # 当调用api失败的时候会返回false
+                                    if response_data['status'] is False:
+                                        result['results'] = 'Minion ID:%s 删除应用时删除应用备份目录失败error(2)，%s' % (
+                                            minion, response_data['results'])
+                                        return Response(result)
+                                    else:
+                                        response_data = response_data['results']['return'][0][minion]
+                                        if response_data is True:
+                                            pass
+                                        else:
+                                            result['results'] = 'Minion ID:%s 删除应用时删除应用备份目录结果错误，%s' % (
+                                                minion, str(response_data['results']))
+                                            return Response(result)
+                    # 删除数据库记录
+                    AppRelease.objects.filter(id=instance.id).delete()
+                result['results'] = '删除成功'
+                result['status'] = True
+            except Exception as e:
+                result['result'] = str(e)
+            return Response(result)
         else:
             response_data = {'results': serializer.errors, 'status': False}
             return Response(response_data)
@@ -128,7 +306,14 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         else:
             operation_list = json.loads(app_data.operation_list)
         operation_arguments = json.loads(app_data.operation_arguments)
+        # 判断应用是否已经在发布中，如果正在发布不能重复发布，直接返回
+        if app_data.release_status != '空闲':
+            result['results'] = '应用：%s 正在发布中，请稍后再试' % app_data.app_name
+            result['release_status'] = '发布中'
+            return Response(result)
         try:
+            # 修改应用状态为发布中
+            AppRelease.objects.filter(id=app_id).update(release_status='发布中')
             # 由于用的salt来做发布所以如果minion离线或不存在删除了就无法执行，所以要判断，另外还有一个原因是minion管理表如果
             # 删除了某个minion会触发try的except
             try:
@@ -191,7 +376,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                     result['results'] = app_log
                                     return Response(result)
                     if operation == 'GIT更新':
-                        co_status = AppRelease.objects.get(id=id).co_status
+                        co_status = AppRelease.objects.get(id=app_id).co_status
                         release_version = request.data.get('release_version', 'HEAD')
                         # 目前只支持http方式的git，下面是拼接把用户名密码拼接进去这样就不用输入了,如果用户名有@需要转义
                         app_git_user_new = operation_arguments['app_git_user'].replace('@', '%40')
@@ -985,5 +1170,8 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             else:
                 release_result = '发布失败'
             username = self.request.user.username
+            # 修改应用状态为空闲
+            AppRelease.objects.filter(id=app_id).update(release_status='空闲', release_update_time=datetime.datetime.now())
+            # 记录日志
             AppReleaseLog.objects.create(app_name=app_data.app_name, log_content=app_log, release_result=release_result,
                                          username=username)

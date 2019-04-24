@@ -525,7 +525,7 @@ class SaltCmdDeleteViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         # 清空salt命令集表
-        result = {}
+        result = {'results': None, 'status': False}
         try:
             SaltCmdInfo.objects.all().delete()
             result['results'] = '清空成功'

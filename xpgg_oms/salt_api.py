@@ -613,7 +613,11 @@ class SaltAPI(object):
                 'arg': arg,
                 }
         message = 'file_directory_exists_api'
-        return self.public(data, message)
+        response_data = self.public(data, message)
+        if response_data is False:
+            return {'results': 'SaltAPI调用%s请求出错,请检查saltapi接口是否正常' % message, 'status': False}
+        else:
+            return {'results': response_data, 'status': True}
 
     # 封装file.symlink,创建软连接
     def file_symlink_api(self, client='local', tgt='*', tgt_type='glob', fun='file.symlink', arg=None):

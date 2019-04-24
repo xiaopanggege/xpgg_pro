@@ -31,6 +31,7 @@ router.register(r'saltstack/salt-tool/job-search/status', saltstack.SaltToolJobS
 router.register(r'saltstack/salt-tool/job-search/result', saltstack.SaltToolJobResultViewSet, base_name='salt-tool-job-search-result')
 router.register(r'release/release-base', release.ReleaseModelViewSet, base_name='release-base')
 router.register(r'release/release-opt', release.ReleaseOperationViewSet, base_name='release-opt')
+router.register(r'release/release-del', release.ReleaseDeleteViewSet, base_name='release-del')
 
 
 urlpatterns = [
