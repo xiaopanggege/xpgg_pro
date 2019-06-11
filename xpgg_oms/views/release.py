@@ -1,5 +1,5 @@
 from xpgg_oms.salt_api import SaltAPI
-from xpgg_oms.models import AppRelease, MinionList, AppReleaseLog
+from xpgg_oms.models import AppRelease, MinionList, AppReleaseLog, AppGroup
 from xpgg_oms import tasks
 from .utils import StandardPagination, format_state
 from rest_framework.views import APIView
@@ -26,7 +26,7 @@ logger = logging.getLogger('xpgg_oms.views')
 
 
 # --- 应用发布 ---
-# 搜索过滤器 直接写在这里因为每个功能基本就一个
+# 应用发布搜索过滤器 直接写在这里因为每个功能基本就一个
 class AppReleaseFilter(django_filters.rest_framework.FilterSet):
     minion_id = django_filters.CharFilter(field_name='minion_list', lookup_expr='icontains')
     app_name = django_filters.CharFilter(field_name='app_name', lookup_expr='icontains')
@@ -1175,3 +1175,68 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             # 记录日志
             AppReleaseLog.objects.create(app_name=app_data.app_name, log_content=app_log, release_result=release_result,
                                          username=username)
+
+
+# 应用发布 日志查询
+class ReleaseLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """
+    list:
+        应用日志列表
+
+    """
+    queryset = AppReleaseLog.objects.all()
+    serializer_class = release_serializers.ReleaseLogModelSerializer
+    filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
+    filter_fields = ('app_name',)
+    pagination_class = StandardPagination
+
+    # 自定义每页个数
+    # pagination_class.page_size = 1
+    ordering_fields = ('id', 'app_name')
+
+    # 默认排序规则
+    ordering = ('-id',)
+
+
+# 应用发布组搜索过滤器
+class ReleaseGroupFilter(django_filters.rest_framework.FilterSet):
+    app_group_name = django_filters.CharFilter(field_name='app_group_name', lookup_expr='icontains')
+    app_group_members = django_filters.CharFilter(field_name='app_group_members', lookup_expr='icontains')
+
+    class Meta:
+        model = AppGroup
+        fields = ['app_group_name', 'app_group_members']
+
+
+# 应用发布组 查询、创建、删除
+class RealseaGroupViewSet(viewsets.ModelViewSet):
+    """
+        list:
+            应用组信息列表
+
+        create:
+            创建应用组
+
+        update:
+            更新应用组
+
+        destroy:
+            删除应用组
+
+        """
+    queryset = AppGroup.objects.all()
+    serializer_class = release_serializers.ReleaseGroupModelSerializer
+    filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
+    filter_class = ReleaseGroupFilter
+    pagination_class = StandardPagination
+
+    # 自定义每页个数
+    # pagination_class.page_size = 1
+
+    # 可选的排序规则
+    ordering_fields = ('id', 'app_group_name')
+    # 默认排序规则
+    ordering = ('id',)
+
+
+

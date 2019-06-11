@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from django.conf import settings
-from xpgg_oms.models import AppRelease
+from xpgg_oms.models import AppRelease, AppReleaseLog, AppGroup, AppAuth
 import time
 import datetime
 import json
@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger('xpgg_oms.views')
 
 
-# 应用list序列号类
+# 应用list序列化类
 class ReleaseModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = AppRelease
@@ -18,7 +18,7 @@ class ReleaseModelSerializer(serializers.ModelSerializer):
 
 # 应用创建息序列化类
 class ReleaseCreateSerializer(serializers.Serializer):
-    app_name = serializers.CharField(max_length=100, help_text='应用名称', validators=[UniqueValidator(queryset=AppRelease.objects.all())])
+    app_name = serializers.CharField(max_length=100, help_text='应用名称', validators=[UniqueValidator(queryset=AppRelease.objects.all(), message='应用名称已存在！')])
     sys_type = serializers.CharField(max_length=20, help_text='系统类型')
     minion_list = serializers.CharField(max_length=2000, help_text='minion_list')
     app_path = serializers.CharField(max_length=2000, help_text='应用目录')
@@ -107,9 +107,14 @@ class ReleaseCreateSerializer(serializers.Serializer):
             else:
                 error_msg['app_stop_style'] = ['应用停止方式不能为空']
             if data.get('app_stop_cmd', '').strip():
-                operation_arguments['app_stop_cmd'] = data.get('app_stop_cmd')
+                if data.get('app_stop_style', '').strip() == '映像名称和命令行':
+                    # 映像名称中出现双引号或者单引号要去掉，因为后台psutil命令返回结果拼接的时候去掉了引号，所以这里也要去掉才能逻辑匹配到
+                    operation_arguments['app_stop_cmd'] = data.get('app_stop_cmd').replace('"', '').replace("'", '')
+                else:
+                    operation_arguments['app_stop_cmd'] = data.get('app_stop_cmd')
             else:
                 error_msg['app_stop_cmd'] = ['应用停止命令不能为空']
+
         if '应用启动' in data.get('operation_list'):
             if data.get('app_start_style', '').strip():
                 operation_arguments['app_start_style'] = data.get('app_start_style')
@@ -191,4 +196,17 @@ class ReleaseDeleteSerializer(serializers.Serializer):
             raise serializers.ValidationError("id不存在")
         return value
 
+
+# 应用日志list序列化类
+class ReleaseLogModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AppReleaseLog
+        fields = '__all__'
+
+
+# 应用发布组list序列化类
+class ReleaseGroupModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AppGroup
+        fields = '__all__'
 

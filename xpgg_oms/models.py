@@ -128,3 +128,102 @@ class AppReleaseLog(models.Model):
 
     def __str__(self):
         return str(self.id)
+
+
+# 应用发布系统 应用发布组信息表
+class AppGroup(models.Model):
+    app_group_name = models.CharField(max_length=20, verbose_name='应用组名称', unique=True)
+    app_group_members = models.TextField(verbose_name='应用组成员', blank=True, null=True)
+    description = models.CharField(max_length=200, verbose_name='描述备注', blank=True, null=True)
+
+    class Meta:
+        verbose_name = '应用发布组信息表'
+        verbose_name_plural = verbose_name
+        ordering = ['id']
+
+    def __str__(self):
+        return str(self.id)
+
+
+# 应用授权表
+class AppAuth(models.Model):
+    my_user_id = models.IntegerField(verbose_name='用户ID', unique=True)
+    username = models.CharField(max_length=50, verbose_name='用户名称', unique=True)
+    app_perms = models.TextField(verbose_name='应用权限', blank=True, null=True)
+    app_group_perms = models.TextField(verbose_name='应用组权限', blank=True, null=True)
+    update_time = models.CharField(max_length=50, verbose_name='最近更新时间', blank=True, null=True)
+    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    description = models.CharField(max_length=200, verbose_name='描述备注', blank=True, null=True)
+
+    class Meta:
+        verbose_name = '应用授权表'
+        verbose_name_plural = verbose_name
+        ordering = ['username']
+
+    def __str__(self):
+        return str(self.username)
+
+
+# 前端角色表
+class Roles(models.Model):
+    name = models.CharField(max_length=200, verbose_name='角色名称', unique=True)
+    description = models.CharField(max_length=200, verbose_name='描述', blank=True, null=True)
+    username = models.ManyToManyField(MyUser, blank=True)
+    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+
+    class Meta:
+        verbose_name = '前端角色表'
+        verbose_name_plural = verbose_name
+        ordering = ['id']
+
+    def __str__(self):
+        return str(self.name)
+
+
+# 前端路由表
+class Routes(models.Model):
+    # route_id是用来给逻辑识别菜单从上到下的一个排列顺序用的，方便调整，规定下100以前是一级菜单200以后是二级菜单类推
+    route_id = models.IntegerField(verbose_name='路由优先级ID', unique=True)
+    name = models.CharField(max_length=200, verbose_name='路由名称', blank=True, null=True)
+    path = models.CharField(max_length=200, verbose_name='路由地址', blank=True, null=True)
+    component = models.CharField(max_length=200, verbose_name='组件地址', blank=True, null=True)
+    redirect = models.CharField(max_length=200, verbose_name='重定向地址', blank=True, null=True)
+    alwaysShow = models.NullBooleanField(max_length=20, verbose_name='一级菜单是否展示', blank=True, null=True)
+    hidden = models.NullBooleanField(max_length=20, verbose_name='是否隐藏', default=False, blank=True, null=True)
+    title = models.CharField(max_length=200, verbose_name='标题', blank=True, null=True)
+    icon = models.CharField(max_length=200, verbose_name='图标', blank=True, null=True)
+    noCache = models.NullBooleanField(max_length=20, verbose_name='是否缓存', blank=True, null=True)
+    affix = models.NullBooleanField(max_length=20, verbose_name='固定到tags栏', blank=True, null=True)
+    breadcrumb = models.NullBooleanField(max_length=20, verbose_name='面包屑', blank=True, null=True)
+    activeMenu = models.CharField(max_length=200, verbose_name='高亮菜单', blank=True, null=True)
+    parentId = models.ForeignKey('self', related_name='pid', verbose_name='父菜单地址', blank=True, null=True, on_delete=models.CASCADE)
+    roles = models.ManyToManyField(Roles, blank=True)
+    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+
+    class Meta:
+        verbose_name = '前端路由表'
+        verbose_name_plural = verbose_name
+        ordering = ['id']
+
+    def __str__(self):
+        return str(self.path)
+
+
+# # 前端角色和用户对照表
+# class UserToRoles(models.Model):
+#     username = models.ForeignKey(MyUser, verbose_name='用户', to_field='username', on_delete=models.CASCADE)
+#     role = models.ForeignKey(Roles, verbose_name='角色', to_field='name', on_delete=models.CASCADE)
+#
+#     class Meta:
+#         unique_together = ("username", "role")
+#         verbose_name = '前端用户角色对照表'
+#         verbose_name_plural = verbose_name
+#         ordering = ['id']
+#
+#     def __str__(self):
+#         return str(self.id)
+
+
+
+
+

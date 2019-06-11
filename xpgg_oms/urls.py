@@ -1,7 +1,7 @@
 from django.urls import path, re_path, include
 from django.conf.urls import url
 from rest_framework.routers import DefaultRouter
-from xpgg_oms.views import user, saltstack, release
+from xpgg_oms.views import user, saltstack, release, menus
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -32,6 +32,11 @@ router.register(r'saltstack/salt-tool/job-search/result', saltstack.SaltToolJobR
 router.register(r'release/release-base', release.ReleaseModelViewSet, base_name='release-base')
 router.register(r'release/release-opt', release.ReleaseOperationViewSet, base_name='release-opt')
 router.register(r'release/release-del', release.ReleaseDeleteViewSet, base_name='release-del')
+router.register(r'release/release-log', release.ReleaseLogViewSet, base_name='release-log')
+router.register(r'release-group', release.RealseaGroupViewSet, base_name='release-group')
+router.register(r'routes', menus.RoutesModelViewSet, base_name='routes')
+router.register(r'roles', menus.RolesModelViewSet, base_name='roles')
+router.register(r'users', menus.UserListModelViewSet, base_name='users')
 
 
 urlpatterns = [
