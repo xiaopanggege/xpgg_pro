@@ -32,7 +32,7 @@ class RolesFilter(django_filters.rest_framework.FilterSet):
         fields = ['name']
 
 
-# 公共方法递归获取路由表
+# 完整动态菜单获取路由表
 def create_route(queryset):
     data_list = []
     for data in queryset:
@@ -87,6 +87,43 @@ class RoutesModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         return Response(data)
 
 
+# 角色路由表获取
+def create_route_role(queryset, role):
+    data_list = []
+    for data in queryset:
+        if role in [role.name for role in data.roles.all()]:
+            tmp = dict()
+            tmp['id'] = data.id
+            tmp['path'] = data.path
+            tmp['component'] = data.component
+            if data.name:
+                tmp['name'] = data.name
+            if data.redirect:
+                tmp['redirect'] = data.redirect
+            if data.alwaysShow:
+                tmp['alwaysShow'] = data.alwaysShow
+            tmp['meta'] = {}
+            tmp['meta']['title'] = data.title
+            if data.icon:
+                tmp['meta']['icon'] = data.icon
+            if data.noCache:
+                tmp['meta']['noCache'] = data.noCache
+            tmp['meta']['roles'] = [role.name for role in data.roles.all()]
+            if data.activeMenu:
+                tmp['meta']['activeMenu'] = data.activeMenu
+            tmp['meta']['roles'] = [role.name for role in data.roles.all()]
+            if data.hidden:
+                tmp['hidden'] = data.hidden
+            children = data.pid.all()
+            if len(children) > 0:
+                tmp['children'] = create_route_role(data.pid.all(), role)
+                data_list.append(tmp)
+            else:
+                data_list.append(tmp)
+
+    return data_list
+
+
 # 动态菜单栏角色：增删改查
 class RolesModelViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.UpdateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet):
     """
@@ -113,9 +150,8 @@ class RolesModelViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.U
             tmp['name'] = data.name
             tmp['user_list'] = data.username.all().values_list('id', flat=True)
             tmp['description'] = data.description
-            tmp['routes'] = create_route(data.routes_set.filter(parentId=None).order_by('route_id'))
+            tmp['routes'] = create_route_role(data.routes_set.filter(parentId=None).order_by('route_id'), data.name)
             response_data.append(tmp)
-
         page = self.paginate_queryset(response_data)
         if page is not None:
             return self.get_paginated_response(page)

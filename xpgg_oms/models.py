@@ -188,7 +188,7 @@ class Routes(models.Model):
     path = models.CharField(max_length=200, verbose_name='路由地址', blank=True, null=True)
     component = models.CharField(max_length=200, verbose_name='组件地址', blank=True, null=True)
     redirect = models.CharField(max_length=200, verbose_name='重定向地址', blank=True, null=True)
-    alwaysShow = models.NullBooleanField(max_length=20, verbose_name='一级菜单是否展示', blank=True, null=True)
+    alwaysShow = models.NullBooleanField(max_length=20, verbose_name='一级菜单是否展示', blank=True, null=True, help_text='顶级菜单记得都要true')
     hidden = models.NullBooleanField(max_length=20, verbose_name='是否隐藏', default=False, blank=True, null=True)
     title = models.CharField(max_length=200, verbose_name='标题', blank=True, null=True)
     icon = models.CharField(max_length=200, verbose_name='图标', blank=True, null=True)
@@ -208,20 +208,6 @@ class Routes(models.Model):
     def __str__(self):
         return str(self.path)
 
-
-# # 前端角色和用户对照表
-# class UserToRoles(models.Model):
-#     username = models.ForeignKey(MyUser, verbose_name='用户', to_field='username', on_delete=models.CASCADE)
-#     role = models.ForeignKey(Roles, verbose_name='角色', to_field='name', on_delete=models.CASCADE)
-#
-#     class Meta:
-#         unique_together = ("username", "role")
-#         verbose_name = '前端用户角色对照表'
-#         verbose_name_plural = verbose_name
-#         ordering = ['id']
-#
-#     def __str__(self):
-#         return str(self.id)
 
 
 

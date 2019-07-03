@@ -34,6 +34,8 @@ router.register(r'release/release-opt', release.ReleaseOperationViewSet, base_na
 router.register(r'release/release-del', release.ReleaseDeleteViewSet, base_name='release-del')
 router.register(r'release/release-log', release.ReleaseLogViewSet, base_name='release-log')
 router.register(r'release-group', release.RealseaGroupViewSet, base_name='release-group')
+router.register(r'release-member', release.ReleaseGroupMemberModelViewSet, base_name='release-member')
+router.register(r'release-auth', release.RealseaAuthViewSet, base_name='release-auth')
 router.register(r'routes', menus.RoutesModelViewSet, base_name='routes')
 router.register(r'roles', menus.RolesModelViewSet, base_name='roles')
 router.register(r'users', menus.UserListModelViewSet, base_name='users')

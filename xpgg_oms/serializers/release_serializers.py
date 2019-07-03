@@ -197,16 +197,22 @@ class ReleaseDeleteSerializer(serializers.Serializer):
         return value
 
 
-# 应用日志list序列化类
+# 应用日志 查询序列化类
 class ReleaseLogModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = AppReleaseLog
         fields = '__all__'
 
 
-# 应用发布组list序列化类
+# 应用发布组 增删改查序列化类
 class ReleaseGroupModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = AppGroup
         fields = '__all__'
 
+
+# 应用发布授权 增删改查序列化类
+class ReleaseAuthModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AppAuth
+        fields = '__all__'

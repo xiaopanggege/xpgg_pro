@@ -1,5 +1,5 @@
 from xpgg_oms.salt_api import SaltAPI
-from xpgg_oms.models import AppRelease, MinionList, AppReleaseLog, AppGroup
+from xpgg_oms.models import AppRelease, MinionList, AppReleaseLog, AppGroup, AppAuth, MyUser
 from xpgg_oms import tasks
 from .utils import StandardPagination, format_state
 from rest_framework.views import APIView
@@ -9,6 +9,7 @@ from rest_framework import viewsets
 from rest_framework import mixins
 from rest_framework import filters
 from django.conf import settings
+from django.db.models.query import QuerySet
 from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
 from xpgg_oms.serializers import release_serializers
@@ -39,10 +40,15 @@ class AppReleaseFilter(django_filters.rest_framework.FilterSet):
 
 
 # 应用发布：查询添加应用
-class ReleaseModelViewSet(mixins.ListModelMixin, mixins.UpdateModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
+class ReleaseModelViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
     """
     list:
         应用信息列表
+
+    retrieve:
+        返回id app_name字段列表,lookup字段随便输入,
+        默认返回所有id app_name列表
+
 
     create:
         创建应用，按需求传递相关参数，主要是operation_arguments参数的传递需要前端配合
@@ -76,6 +82,29 @@ class ReleaseModelViewSet(mixins.ListModelMixin, mixins.UpdateModelMixin, mixins
         elif self.action == "update":
             return release_serializers.ReleaseCreateSerializer
         return release_serializers.ReleaseModelSerializer
+
+    # queryset自定义通过应用授权用户里的应用授权来获取到应用列表
+    def get_queryset(self):
+        # 判断是否为超级用户，如果是直接返回所有
+        if self.request.user.is_superuser:
+            queryset = AppRelease.objects.all()
+            return queryset
+        user_id = self.request.user.id
+        try:
+            check_auth = AppAuth.objects.filter(my_user_id=user_id).exists()
+            if check_auth:
+                app_list = json.loads(AppAuth.objects.get(my_user_id=user_id).app_perms)
+                if type(app_list) is list:
+                    if app_list:
+                        queryset = AppRelease.objects.filter(id__in=app_list)
+                        return queryset
+            return AppRelease.objects.none()
+        except Exception as e:
+            return AppRelease.objects.none()
+
+    def retrieve(self, request, *args, **kwargs):
+        app_list = AppRelease.objects.all().order_by('create_time').values('id', 'app_name')
+        return Response({'results': list(app_list), 'status': True})
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -182,14 +211,15 @@ class ReleaseDeleteViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                 app_path = instance.app_path
                 app_backup_path = instance.app_backup_path
                 minion_id_list = instance.minion_list.split(',')
-
+                app_name = instance.app_name
                 # 应用发布组为开发，先注释
-                # app_group_exist = AppGroup.objects.filter(
-                #     app_group_members__regex=r'^%s$|^%s,|,%s$|,%s,' % (app_name, app_name, app_name, app_name)).exists()
-                # if app_group_exist:
-                #     result['result'] = '该应用属于应用发布组的成员，请先从应用发布组中踢除该应用，再执行删除操作'
-                #     return Response(result)
-
+                try:
+                    app_group_exist = AppGroup.objects.filter(app_group_members__regex=r'\"%s\"' % app_name).exists()
+                    if app_group_exist:
+                        result['results'] = '该应用属于应用发布组的成员，请先从应用发布组中踢除该应用，再执行删除操作'
+                        return Response(result)
+                except Exception as e:
+                    pass
                 with requests.Session() as s:
                     saltapi = SaltAPI(session=s)
                     # 判断一下检出的目录是否存在，因为如果没发布过，目录还没生成，存在的话删除项目的时候要顺带删除
@@ -1208,9 +1238,13 @@ class ReleaseGroupFilter(django_filters.rest_framework.FilterSet):
         fields = ['app_group_name', 'app_group_members']
 
 
-# 应用发布组 查询、创建、删除
+# 应用发布组 增删改查
 class RealseaGroupViewSet(viewsets.ModelViewSet):
     """
+        retrieve:
+            返回id app_name字段列表,lookup字段随便输入,
+            默认返回所有id app_name列表
+
         list:
             应用组信息列表
 
@@ -1237,6 +1271,174 @@ class RealseaGroupViewSet(viewsets.ModelViewSet):
     ordering_fields = ('id', 'app_group_name')
     # 默认排序规则
     ordering = ('id',)
+
+    # queryset自定义通过应用授权用户里的应用组授权来获取到应用组列表
+    def get_queryset(self):
+        # 判断是否是超级用户，如果是直接返回所有
+        if self.request.user.is_superuser:
+            queryset = AppGroup.objects.all()
+            return queryset
+        user_id = self.request.user.id
+        try:
+            check_auth = AppAuth.objects.filter(my_user_id=user_id).exists()
+            if check_auth:
+                app_list = json.loads(AppAuth.objects.get(my_user_id=user_id).app_group_perms)
+                if type(app_list) is list:
+                    if app_list:
+                        queryset = AppGroup.objects.filter(id__in=app_list)
+                        return queryset
+            return AppGroup.objects.none()
+        except Exception as e:
+            return AppGroup.objects.none()
+
+    def retrieve(self, request, *args, **kwargs):
+        group_list = AppGroup.objects.all().values('id', 'app_group_name')
+        return Response({'results': list(group_list), 'status': True})
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            # 下面都是create源码内容
+            self.perform_create(serializer)
+            response_data = {'results': '添加成功', 'status': True}
+            return Response(response_data)
+        else:
+            response_data = {'results': serializer.errors, 'status': False}
+            return Response(response_data)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        if serializer.is_valid():
+            # 下面都是源码内容
+            self.perform_update(serializer)
+            if getattr(instance, '_prefetched_objects_cache', None):
+                # If 'prefetch_related' has been applied to a queryset, we need to
+                # forcibly invalidate the prefetch cache on the instance.
+                instance._prefetched_objects_cache = {}
+            response_data = {'results': '更新成功', 'status': True}
+            return Response(response_data)
+        else:
+            response_data = {'results': serializer.errors, 'status': False}
+            return Response(response_data)
+
+
+# 应用组成员 查询
+class ReleaseGroupMemberModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """
+    list:
+        按应用组ID来输出应用信息列表,如不传递ID则输出空
+
+    """
+
+    serializer_class = release_serializers.ReleaseModelSerializer
+    filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
+    filter_class = AppReleaseFilter
+    pagination_class = StandardPagination
+
+    # 自定义每页个数
+    # pagination_class.page_size = 1
+
+    # 可选的排序规则
+    ordering_fields = ('id', 'minion_list', 'app_name')
+    # 默认排序规则
+    ordering = ('id',)
+
+    # queryset自定义通过应用组ID来获取到应用列表
+    def get_queryset(self):
+        group_id = self.request.query_params.get('group_id')
+        try:
+            group_queryset = AppGroup.objects.get(id=group_id)
+            if type(json.loads(group_queryset.app_group_members)) is list:
+                if json.loads(group_queryset.app_group_members):
+                    app_list = json.loads(group_queryset.app_group_members)
+                    queryset = AppRelease.objects.filter(id__in=app_list)
+                    return queryset
+            return AppRelease.objects.none()
+        except Exception as e:
+            return AppRelease.objects.none()
+
+
+# 应用发布授权 搜索过滤器
+class ReleaseAuthFilter(django_filters.rest_framework.FilterSet):
+    username = django_filters.CharFilter(field_name='username', lookup_expr='icontains')
+    app_perms = django_filters.CharFilter(field_name='app_perms', lookup_expr='icontains')
+    app_group_perms = django_filters.CharFilter(field_name='app_group_perms', lookup_expr='icontains')
+
+    class Meta:
+        model = AppAuth
+        fields = ['username', 'app_perms', 'app_group_perms']
+
+
+# 应用发布授权 增删改查
+class RealseaAuthViewSet(viewsets.ModelViewSet):
+    """
+        retrieve:
+            获取授权用户名单字段列表
+
+        list:
+            应用授权列表
+
+        create:
+            创建应用授权
+
+        update:
+            更新应用授权
+
+        destroy:
+            删除应用授权
+
+        """
+    queryset = AppAuth.objects.all()
+    serializer_class = release_serializers.ReleaseAuthModelSerializer
+    filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
+    filter_class = ReleaseAuthFilter
+    pagination_class = StandardPagination
+
+    # 自定义每页个数
+    # pagination_class.page_size = 1
+
+    # 可选的排序规则
+    ordering_fields = ('id', 'username')
+    # 默认排序规则
+    ordering = ('id',)
+
+    def retrieve(self, request, *args, **kwargs):
+        id_list = AppAuth.objects.all().order_by('create_time').values_list('my_user_id', flat=True)
+        data = MyUser.objects.all().exclude(id__in=list(id_list)).values('id', 'username')
+        return Response({'results': data, 'status': True})
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            # 下面都是create源码内容
+            self.perform_create(serializer)
+            response_data = {'results': '添加成功', 'status': True}
+            return Response(response_data)
+        else:
+            response_data = {'results': serializer.errors, 'status': False}
+            return Response(response_data)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        if serializer.is_valid():
+            # 下面都是源码内容
+            self.perform_update(serializer)
+            if getattr(instance, '_prefetched_objects_cache', None):
+                # If 'prefetch_related' has been applied to a queryset, we need to
+                # forcibly invalidate the prefetch cache on the instance.
+                instance._prefetched_objects_cache = {}
+            response_data = {'results': '更新成功', 'status': True}
+            return Response(response_data)
+        else:
+            response_data = {'results': serializer.errors, 'status': False}
+            return Response(response_data)
+
+
+
 
 
 

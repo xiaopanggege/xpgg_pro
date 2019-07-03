@@ -30,6 +30,8 @@ class RolesSerializer(serializers.Serializer):
         instance.save()
         if validated_data.get('user_list'):
             instance.username.set(validated_data.get('user_list'))
+        else:
+            instance.username.clear()
         if validated_data.get('routes'):
             instance.routes_set.set(validated_data.get('routes'))
         return instance

@@ -30,10 +30,7 @@ class MyUserAdmin(UserAdmin):
 
 class MyRoutes(admin.ModelAdmin):
     list_display = ('id', 'route_id', 'path', 'parentId')
-
-
-class MyUserToRoles(admin.ModelAdmin):
-    list_display = ('id', 'username', 'role')
+    list_per_page = 15
 
 
 # 一定要加UserAdmin，不然在创建用户修改用户的时候密码会变成明文，各种问题，挖槽！！草！
@@ -41,6 +38,7 @@ admin.site.register(MyUser, MyUserAdmin)
 admin.site.register(SaltKeyList)
 admin.site.register(MinionList)
 admin.site.register(AppRelease)
+admin.site.register(AppGroup)
+admin.site.register(AppAuth)
 admin.site.register(Routes, MyRoutes)
 admin.site.register(Roles)
-# admin.site.register(UserToRoles, MyUserToRoles)
