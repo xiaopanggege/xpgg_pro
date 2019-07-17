@@ -133,7 +133,7 @@ class AppReleaseLog(models.Model):
 # 应用发布系统 应用发布组信息表
 class AppGroup(models.Model):
     app_group_name = models.CharField(max_length=20, verbose_name='应用组名称', unique=True)
-    app_group_members = models.TextField(verbose_name='应用组成员', blank=True, null=True)
+    app = models.ManyToManyField(AppRelease, verbose_name='应用组成员', blank=True)
     description = models.CharField(max_length=200, verbose_name='描述备注', blank=True, null=True)
 
     class Meta:
@@ -149,9 +149,9 @@ class AppGroup(models.Model):
 class AppAuth(models.Model):
     my_user_id = models.IntegerField(verbose_name='用户ID', unique=True)
     username = models.CharField(max_length=50, verbose_name='用户名称', unique=True)
-    app_perms = models.TextField(verbose_name='应用权限', blank=True, null=True)
-    app_group_perms = models.TextField(verbose_name='应用组权限', blank=True, null=True)
-    update_time = models.CharField(max_length=50, verbose_name='最近更新时间', blank=True, null=True)
+    app = models.ManyToManyField(AppRelease, verbose_name='应用权限', blank=True)
+    appgroup = models.ManyToManyField(AppGroup, verbose_name='应用组权限', blank=True)
+    manager = models.BooleanField(max_length=20, verbose_name='是否为管理者', default=False)
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     description = models.CharField(max_length=200, verbose_name='描述备注', blank=True, null=True)
 

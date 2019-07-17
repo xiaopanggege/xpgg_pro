@@ -159,7 +159,7 @@ REST_FRAMEWORK = {
     # 全局权限设置IsAuthenticated为全局都必须登录才能访问，还有其他比如AllowAny就是不限制访问，http://drf.jiuyou.info详细介绍
     'DEFAULT_PERMISSION_CLASSES': (
         # 'rest_framework.permissions.IsAuthenticated',
-        # 不限制访问用下面这个
+        # 不限制访问用下面这个,默认不设置就是这个了
         'rest_framework.permissions.AllowAny',
     ),
     # 自定义异常
@@ -169,7 +169,7 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=2),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,

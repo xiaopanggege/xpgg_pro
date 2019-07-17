@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from django.conf import settings
-from xpgg_oms.models import AppRelease, AppReleaseLog, AppGroup, AppAuth
+from xpgg_oms.models import AppRelease, AppReleaseLog, AppGroup, AppAuth, MyUser
 import time
 import datetime
 import json
@@ -204,15 +204,108 @@ class ReleaseLogModelSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-# 应用发布组 增删改查序列化类
+# 应用发布组 查询序列化类
 class ReleaseGroupModelSerializer(serializers.ModelSerializer):
+    app_id = serializers.SerializerMethodField()
+    app_name = serializers.SerializerMethodField()
+
+    def get_app_id(self, obj):
+        return [app.id for app in obj.app.all()]
+
+    def get_app_name(self, obj):
+        apps = [app.app_name for app in obj.app.all()]
+        return ','.join(apps)
+
     class Meta:
         model = AppGroup
         fields = '__all__'
 
 
-# 应用发布授权 增删改查序列化类
+# 应用发布组 增删改序列化类
+class ReleaseGroupCUDSerializer(serializers.Serializer):
+    app_group_name = serializers.CharField(max_length=100, help_text='应用组名称', validators=[UniqueValidator(queryset=AppGroup.objects.all(), message='应用组名称已存在')])
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=20, help_text='描述')
+    app_id = serializers.ListField(required=False, help_text='应用ID列表')
+
+    def create(self, validated_data):
+        data = dict()
+        data['app_group_name'] = validated_data.get('app_group_name').strip()
+        data['description'] = validated_data.get('description').strip()
+        group = AppGroup.objects.create(**data)
+        if validated_data.get('app_id'):
+            group.app.add(*validated_data.get('app_id'))
+        return group
+
+    def update(self, instance, validated_data):
+        instance.app_group_name = validated_data.get('app_group_name', instance.app_group_name)
+        instance.description = validated_data.get('description', instance.description)
+        instance.save()
+        if validated_data.get('app_id'):
+            instance.app.set(validated_data.get('app_id'))
+        else:
+            instance.app.clear()
+        return instance
+
+
+# 应用发布授权 查询序列化类
 class ReleaseAuthModelSerializer(serializers.ModelSerializer):
+    app_id = serializers.SerializerMethodField()
+    app_name = serializers.SerializerMethodField()
+    app_group_id = serializers.SerializerMethodField()
+    app_group_name = serializers.SerializerMethodField()
+
+    def get_app_id(self, obj):
+        return [app.id for app in obj.app.all()]
+
+    def get_app_name(self, obj):
+        apps = [app.app_name for app in obj.app.all()]
+        return ','.join(apps)
+
+    def get_app_group_id(self, obj):
+        return [appgroup.id for appgroup in obj.appgroup.all()]
+
+    def get_app_group_name(self, obj):
+        apps = [appgroup.app_group_name for appgroup in obj.appgroup.all()]
+        return ','.join(apps)
+
     class Meta:
         model = AppAuth
         fields = '__all__'
+
+
+# 应用发布授权 增删改序列化类
+class ReleaseAuthCUDSerializer(serializers.Serializer):
+    my_user_id = serializers.IntegerField(help_text='用户ID', validators=[UniqueValidator(queryset=AppAuth.objects.all(), message='用户ID已存在')])
+    username = serializers.CharField(max_length=50, help_text='用户名称', validators=[UniqueValidator(queryset=AppAuth.objects.all(), message='用户名称已存在')])
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=20, help_text='描述')
+    app_id = serializers.ListField(required=False, help_text='应用ID列表')
+    app_group_id = serializers.ListField(required=False, help_text='应用组ID列表')
+    manager = serializers.BooleanField(help_text='是否为管理者')
+
+    def create(self, validated_data):
+        data = dict()
+        data['my_user_id'] = validated_data.get('my_user_id')
+        data['username'] = validated_data.get('username').strip()
+        data['manager'] = validated_data.get('manager')
+        data['description'] = validated_data.get('description').strip()
+        auth = AppAuth.objects.create(**data)
+        # 授权创建的时候前端没有设计直接赋予权限，只是创建一下授权用户
+        # if validated_data.get('app_id'):
+        #     auth.app.add(*validated_data.get('app_id'))
+        return auth
+
+    def update(self, instance, validated_data):
+        instance.my_user_id = validated_data.get('my_user_id', instance.my_user_id)
+        instance.username = validated_data.get('username', instance.username)
+        instance.manager = validated_data.get('manager', instance.manager)
+        instance.description = validated_data.get('description', instance.description)
+        instance.save()
+        if validated_data.get('app_id'):
+            instance.app.set(validated_data.get('app_id'))
+        else:
+            instance.app.clear()
+        if validated_data.get('app_group_id'):
+            instance.appgroup.set(validated_data.get('app_group_id'))
+        else:
+            instance.appgroup.clear()
+        return instance

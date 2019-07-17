@@ -37,11 +37,6 @@ class RolesSerializer(serializers.Serializer):
         return instance
 
 
-# # 动态菜单 用户角色关联表序列化类
-# class UserToRolesSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = UserToRoles
-#         fields = '__all__'
 
 
 

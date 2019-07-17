@@ -12,6 +12,7 @@ from django.conf import settings
 from django.db.models.query import QuerySet
 from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
+from rest_framework import permissions
 from xpgg_oms.serializers import release_serializers
 from xpgg_oms.filters import MinionListFilter
 import datetime
@@ -24,6 +25,22 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 import logging
 logger = logging.getLogger('xpgg_oms.views')
+
+
+# 应用发布由于需要开放给开发人用使用，所以用户权限做了自定义，通过应用授权的manager判断是否是管理者
+class IsManager(permissions.BasePermission):
+    def has_permission(self, request, view):
+        # Read permissions are allowed to any request,
+        # so we'll always allow GET, HEAD or OPTIONS requests.
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if request.user.is_superuser:
+            return True
+        try:
+            user = AppAuth.objects.get(username=request.user.username)
+            return user.manager
+        except Exception as e:
+            return False
 
 
 # --- 应用发布 ---
@@ -63,6 +80,7 @@ class ReleaseModelViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixi
     serializer_class = release_serializers.ReleaseCreateSerializer
     filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
     filter_class = AppReleaseFilter
+    permission_classes = (IsManager, permissions.IsAuthenticated)
     pagination_class = StandardPagination
 
     # 自定义每页个数
@@ -91,14 +109,8 @@ class ReleaseModelViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixi
             return queryset
         user_id = self.request.user.id
         try:
-            check_auth = AppAuth.objects.filter(my_user_id=user_id).exists()
-            if check_auth:
-                app_list = json.loads(AppAuth.objects.get(my_user_id=user_id).app_perms)
-                if type(app_list) is list:
-                    if app_list:
-                        queryset = AppRelease.objects.filter(id__in=app_list)
-                        return queryset
-            return AppRelease.objects.none()
+            queryset = AppAuth.objects.get(my_user_id=user_id).app.all()
+            return queryset
         except Exception as e:
             return AppRelease.objects.none()
 
@@ -198,6 +210,7 @@ class ReleaseDeleteViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
     """
     queryset = AppRelease.objects.all()
+    permission_classes = (IsManager, permissions.IsAuthenticated)
     serializer_class = release_serializers.ReleaseDeleteSerializer
 
     def create(self, request, *args, **kwargs):
@@ -211,15 +224,6 @@ class ReleaseDeleteViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                 app_path = instance.app_path
                 app_backup_path = instance.app_backup_path
                 minion_id_list = instance.minion_list.split(',')
-                app_name = instance.app_name
-                # 应用发布组为开发，先注释
-                try:
-                    app_group_exist = AppGroup.objects.filter(app_group_members__regex=r'\"%s\"' % app_name).exists()
-                    if app_group_exist:
-                        result['results'] = '该应用属于应用发布组的成员，请先从应用发布组中踢除该应用，再执行删除操作'
-                        return Response(result)
-                except Exception as e:
-                    pass
                 with requests.Session() as s:
                     saltapi = SaltAPI(session=s)
                     # 判断一下检出的目录是否存在，因为如果没发布过，目录还没生成，存在的话删除项目的时候要顺带删除
@@ -1228,14 +1232,15 @@ class ReleaseLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     ordering = ('-id',)
 
 
+# --- 应用发布组 ---
 # 应用发布组搜索过滤器
 class ReleaseGroupFilter(django_filters.rest_framework.FilterSet):
     app_group_name = django_filters.CharFilter(field_name='app_group_name', lookup_expr='icontains')
-    app_group_members = django_filters.CharFilter(field_name='app_group_members', lookup_expr='icontains')
+    app_name = django_filters.CharFilter(field_name='app__app_name', lookup_expr='icontains')
 
     class Meta:
         model = AppGroup
-        fields = ['app_group_name', 'app_group_members']
+        fields = ['app_group_name', 'app_name']
 
 
 # 应用发布组 增删改查
@@ -1262,6 +1267,8 @@ class RealseaGroupViewSet(viewsets.ModelViewSet):
     serializer_class = release_serializers.ReleaseGroupModelSerializer
     filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
     filter_class = ReleaseGroupFilter
+    # permission_classes默认调用全局权限，手动赋值局部修改权限
+    permission_classes = (IsManager, permissions.IsAuthenticated)
     pagination_class = StandardPagination
 
     # 自定义每页个数
@@ -1272,6 +1279,18 @@ class RealseaGroupViewSet(viewsets.ModelViewSet):
     # 默认排序规则
     ordering = ('id',)
 
+    # 动态选择serializer
+    def get_serializer_class(self):
+        if self.action == "list":
+            return release_serializers.ReleaseGroupModelSerializer
+        elif self.action == "create":
+            return release_serializers.ReleaseGroupCUDSerializer
+        elif self.action == "update":
+            return release_serializers.ReleaseGroupCUDSerializer
+        elif self.action == 'destroy':
+            return release_serializers.ReleaseGroupCUDSerializer
+        return release_serializers.ReleaseGroupModelSerializer
+
     # queryset自定义通过应用授权用户里的应用组授权来获取到应用组列表
     def get_queryset(self):
         # 判断是否是超级用户，如果是直接返回所有
@@ -1280,20 +1299,26 @@ class RealseaGroupViewSet(viewsets.ModelViewSet):
             return queryset
         user_id = self.request.user.id
         try:
-            check_auth = AppAuth.objects.filter(my_user_id=user_id).exists()
-            if check_auth:
-                app_list = json.loads(AppAuth.objects.get(my_user_id=user_id).app_group_perms)
-                if type(app_list) is list:
-                    if app_list:
-                        queryset = AppGroup.objects.filter(id__in=app_list)
-                        return queryset
-            return AppGroup.objects.none()
+            queryset = AppAuth.objects.get(my_user_id=user_id).appgroup.all()
+            return queryset
         except Exception as e:
             return AppGroup.objects.none()
 
     def retrieve(self, request, *args, **kwargs):
         group_list = AppGroup.objects.all().values('id', 'app_group_name')
         return Response({'results': list(group_list), 'status': True})
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        # 因为查询的过滤条件有一个是多对多关系模糊查询，会导致模糊匹配到多个重复的记录，所以源码加一个去重
+        queryset = queryset.distinct()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -1347,28 +1372,24 @@ class ReleaseGroupMemberModelViewSet(mixins.ListModelMixin, viewsets.GenericView
 
     # queryset自定义通过应用组ID来获取到应用列表
     def get_queryset(self):
-        group_id = self.request.query_params.get('group_id')
         try:
-            group_queryset = AppGroup.objects.get(id=group_id)
-            if type(json.loads(group_queryset.app_group_members)) is list:
-                if json.loads(group_queryset.app_group_members):
-                    app_list = json.loads(group_queryset.app_group_members)
-                    queryset = AppRelease.objects.filter(id__in=app_list)
-                    return queryset
-            return AppRelease.objects.none()
+            group_id = self.request.query_params.get('group_id')
+            queryset = AppGroup.objects.get(id=group_id).app.all()
+            return queryset
         except Exception as e:
             return AppRelease.objects.none()
 
 
+# --- 应用发布授权 ---
 # 应用发布授权 搜索过滤器
 class ReleaseAuthFilter(django_filters.rest_framework.FilterSet):
     username = django_filters.CharFilter(field_name='username', lookup_expr='icontains')
-    app_perms = django_filters.CharFilter(field_name='app_perms', lookup_expr='icontains')
-    app_group_perms = django_filters.CharFilter(field_name='app_group_perms', lookup_expr='icontains')
+    app_name = django_filters.CharFilter(field_name='app__app_name', lookup_expr='icontains')
+    app_group_name = django_filters.CharFilter(field_name='appgroup__app_group_name', lookup_expr='icontains')
 
     class Meta:
         model = AppAuth
-        fields = ['username', 'app_perms', 'app_group_perms']
+        fields = ['username', 'app_name', 'app_group_name']
 
 
 # 应用发布授权 增删改查
@@ -1394,6 +1415,7 @@ class RealseaAuthViewSet(viewsets.ModelViewSet):
     serializer_class = release_serializers.ReleaseAuthModelSerializer
     filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
     filter_class = ReleaseAuthFilter
+    permission_classes = (IsManager, permissions.IsAuthenticated)
     pagination_class = StandardPagination
 
     # 自定义每页个数
@@ -1404,10 +1426,31 @@ class RealseaAuthViewSet(viewsets.ModelViewSet):
     # 默认排序规则
     ordering = ('id',)
 
+    # 动态选择serializer
+    def get_serializer_class(self):
+        if self.action == "list":
+            return release_serializers.ReleaseAuthModelSerializer
+        elif self.action == "create":
+            return release_serializers.ReleaseAuthCUDSerializer
+        elif self.action == "update":
+            return release_serializers.ReleaseAuthCUDSerializer
+        elif self.action == 'destroy':
+            return release_serializers.ReleaseAuthCUDSerializer
+        return release_serializers.ReleaseAuthModelSerializer
+
     def retrieve(self, request, *args, **kwargs):
         id_list = AppAuth.objects.all().order_by('create_time').values_list('my_user_id', flat=True)
         data = MyUser.objects.all().exclude(id__in=list(id_list)).values('id', 'username')
         return Response({'results': data, 'status': True})
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        # 因为查询的过滤条件有一个是多对多关系模糊查询，会导致模糊匹配到多个重复的记录，所以源码加一个去重
+        queryset = queryset.distinct()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

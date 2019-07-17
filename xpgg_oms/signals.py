@@ -40,26 +40,3 @@ def update_app_auth_myuser(sender, instance, created, **kwargs):
             if new_username != old_username:
                 AppAuth.objects.filter(my_user_id=instance.id).update(username=instance.username)
 
-
-# 在操作AppRelease表的删除时候同时对AppAuth表做删除对应权限操作
-@receiver(post_delete, sender=AppRelease, dispatch_uid="AppRelease_post_delete")
-def delete_app_auth_apprelease(sender, instance, **kwargs):
-    # 这个匹配主要是坑在，前端是用json把数组变成了字符串传回来是[1,2,3,4]第一次用app_perms__regex=r'^%d$|^%d,|,%d$|,%d,没什么问题
-    # 但是经过第一次后下面python的json.loads会把列表变成[1, 2, 3, 4]中间有一个空格。。第一次发现，所以正则又要多加几种匹配
-    app_auth_obj = AppAuth.objects.filter(app_perms__regex=r'^%d$|^%d,|,%d$|, %d$|,%d,|, %d, ' % (instance.id, instance.id, instance.id, instance.id, instance.id, instance.id))
-    for obj in app_auth_obj:
-        app_perms_list = json.loads(obj.app_perms)
-        app_perms_list.remove(instance.id)
-        obj.app_perms = json.dumps(app_perms_list)
-        obj.save()
-
-
-# 在操作AppGroup表的删除时候同时对AppAuth表做删除对应权限操作
-@receiver(post_delete, sender=AppGroup, dispatch_uid="AppGroup_post_delete")
-def delete_app_auth_appgroup(sender, instance, **kwargs):
-    app_auth_obj = AppAuth.objects.filter(app_perms__regex=r'^%d$|^%d,|,%d$|, %d$|,%d,|, %d, ' % (instance.id, instance.id, instance.id, instance.id, instance.id, instance.id))
-    for obj in app_auth_obj:
-        app_group_perms_list = json.loads(obj.app_group_name)
-        app_group_perms_list.remove(instance.app_group_name)
-        obj.app_group_perms = json.dumps(app_group_perms_list)
-        obj.save()

@@ -29,4 +29,3 @@ class MyUserViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
         return self.request.user
 
 
-

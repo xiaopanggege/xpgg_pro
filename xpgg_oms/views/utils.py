@@ -14,18 +14,20 @@ def custom_exception_handler(exc, context):
     # to get the standard error response.
     response = exception_handler(exc, context)
 
-    # Now add the HTTP status code to the response.
+    # 注意当response为None时候将会重新触发django的标准500异常
     if response is not None:
-        response.data['code'] = response.status_code
-        # 这个可以使所有错误码改成200返回，然后在code中指定返回码
-        # response.status_code = 200
-        try:
-            # 可能没有detail所以要用try
-            response.data['message'] = response.data['detail']
-            del response.data['detail']
-        except Exception as e:
-            pass
+        response.data['status_code'] = response.status_code
+        # 把所有错误码改成200返回，然后在返回的data里添加status_code中指定返回码,注意这个自定义方法只有在发生异常时才会被调用
+        # 为了规范response.data里的字段，我统一规定code为返回码，msg为额外需要的返回信息
+        response.status_code = 200
 
+        # 返回信息统一到msg字段,有时候没有detail有时候未知字段是non_field_errors，具体有没有其他情况后面再看看
+        if 'detail' in response.data:
+            response.data['msg'] = response.data['detail']
+            del response.data['detail']
+        elif 'non_field_errors' in response.data:
+            response.data['msg'] = response.data['non_field_errors']
+            del response.data['non_field_errors']
     return response
 
 # 参考：
@@ -92,7 +94,7 @@ class MyResponse(Response):
             )
             raise AssertionError(msg)
 
-        self.data = {"code": code, "message": msg, "data": data}
+        self.data = {"code": code, "msg": msg, "data": data}
         self.template_name = template_name
         self.exception = exception
         self.content_type = content_type

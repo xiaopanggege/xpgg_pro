@@ -68,7 +68,7 @@ def create_route(queryset):
     return data_list
 
 
-# 动态菜单栏 路由：查询添加
+# 动态菜单栏 路由：查询
 class RoutesModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """
     list:
@@ -129,6 +129,15 @@ class RolesModelViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.U
     """
     list:
         动态菜单角色列表
+
+    create:
+        创建角色
+
+    update：
+        更新角色
+
+    destroy:
+        删除角色
 
     """
     queryset = Roles.objects.all()
