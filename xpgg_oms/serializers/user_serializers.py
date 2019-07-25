@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import Group
+from django.contrib.auth.hashers import make_password
 from xpgg_oms.models import MyUser
 import logging
 logger = logging.getLogger('xpgg_oms.views')
@@ -12,11 +13,17 @@ class MyUserDetailSerializer(serializers.ModelSerializer):
     # 这种是自定义字段名字以及返回内容，method_name参数默认值是：get_字段名，
     roles = serializers.SerializerMethodField(method_name='get_roles_set')
 
+    # password = serializers.CharField(
+    #     style={'input_type': 'password'}, help_text="密码", label="密码", write_only=True,
+    # )
+
     class Meta:
         # 设置继承的数据库
         model = MyUser
         # 设置显示的字段
-        fields = ('id', 'username', 'avatar', 'groups', 'roles', 'is_superuser')
+        fields = ('id', 'username', 'avatar', 'groups', 'roles', 'is_superuser', 'is_active', 'password')
+        # 下面这种方式也是用来设置只读之类的
+        extra_kwargs = {'password': {'write_only': True, 'style': {'input_type': 'password'}}}
         # fields = "__all__" 取所有字段
 
     # 这个是上面自定义字段roles的具体返回内容，这里因为groups是一个多对多外键，所以用all来获取所有多个数据，然后返回一个列表
@@ -26,3 +33,16 @@ class MyUserDetailSerializer(serializers.ModelSerializer):
         if obj.is_anonymous:
             return []
         return [roles.name for roles in obj.roles_set.all()]
+
+    def create(self, validated_data):
+        validated_data['password'] = make_password(validated_data.get('password'))
+        logger.error(validated_data.get('avatar'))
+        return MyUser.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        instance.password = make_password(validated_data.get('password')) if validated_data.get('password') else instance.password
+        instance.is_active = validated_data.get('is_active', instance.is_active)
+        instance.is_superuser = validated_data.get('is_superuser', instance.is_superuser)
+        instance.avatar = validated_data.get('avatar', instance.avatar)
+        instance.save()
+        return instance

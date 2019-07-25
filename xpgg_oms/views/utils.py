@@ -1,9 +1,17 @@
 # 公用全局方法
+from django.contrib.auth import authenticate
 from rest_framework.views import exception_handler
 from rest_framework.response import Response
 from django.utils import six
 from rest_framework.serializers import Serializer
 from rest_framework.pagination import PageNumberPagination
+from django.utils.six import text_type
+from rest_framework import serializers
+from rest_framework_simplejwt.state import User
+
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.serializers import PasswordField
+from rest_framework_simplejwt.views import TokenObtainPairView
 import logging
 logger = logging.getLogger('xpgg_oms.views')
 
@@ -14,7 +22,7 @@ def custom_exception_handler(exc, context):
     # to get the standard error response.
     response = exception_handler(exc, context)
 
-    # 注意当response为None时候将会重新触发django的标准500异常
+    # 注意当response为None时候将会重新触发django的标准500异常,
     if response is not None:
         response.data['status_code'] = response.status_code
         # 把所有错误码改成200返回，然后在返回的data里添加status_code中指定返回码,注意这个自定义方法只有在发生异常时才会被调用
@@ -68,6 +76,69 @@ def custom_exception_handler(exc, context):
 
 
 # 自定义Response返回，把原来返回的data放到下一层即data.data，然后在data中添加code，message等,目前还没有用到
+
+
+# 以下3个是用来自定义jwt错误返回，默认不会返回到底是用户名错误还是密码错误奶奶的，目前没有使用
+# 这个可以修改验证错误返回内容等
+class MyTokenObtainSerializer(serializers.Serializer):
+    username_field = User.USERNAME_FIELD
+
+    def __init__(self, *args, **kwargs):
+        super(MyTokenObtainSerializer, self).__init__(*args, **kwargs)
+
+        self.fields[self.username_field] = serializers.CharField()
+        self.fields['password'] = PasswordField()
+
+    def validate(self, attrs):
+        # 这里改验证方法和返回错误的内容
+        self.user = authenticate(**{
+            self.username_field: attrs[self.username_field],
+            'password': attrs['password'],
+        })
+
+        # Prior to Django 1.10, inactive users could be authenticated with the
+        # default `ModelBackend`.  As of Django 1.10, the `ModelBackend`
+        # prevents inactive users from authenticating.  App designers can still
+        # allow inactive users to authenticate by opting for the new
+        # `AllowAllUsersModelBackend`.  However, we explicitly prevent inactive
+        # users from authenticating to enforce a reasonable policy and provide
+        # sensible backwards compatibility with older Django versions.
+        if self.user is None or not self.user.is_active:
+            raise serializers.ValidationError(
+                _('No active account found with the given credentials'),
+            )
+
+        return {}
+
+    @classmethod
+    def get_token(cls, user):
+        raise NotImplemented('Must implement `get_token` method for `TokenObtainSerializer` subclasses')
+
+
+# 这个可以修改验证成功后返回的内容，官网有例子
+class MyTokenObtainPairSerializer(MyTokenObtainSerializer):
+    # token内容在这里改
+    @classmethod
+    def get_token(cls, user):
+        return RefreshToken.for_user(user)
+
+    def validate(self, attrs):
+        data = super(MyTokenObtainSerializer, self).validate(attrs)
+
+        refresh = self.get_token(self.user)
+
+        data['refresh'] = text_type(refresh)
+        data['access'] = text_type(refresh.access_token)
+
+        return data
+
+
+# 这个是最外层应用jwt的认证做登录，应用在urls.py里的login路由上
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer
+
+
+# 自定义Response
 class MyResponse(Response):
     """
     An HttpResponse that allows its data to be rendered into

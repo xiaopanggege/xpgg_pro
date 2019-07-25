@@ -1,6 +1,6 @@
 from xpgg_oms.models import Roles, Routes, MyUser
 from xpgg_oms import tasks
-from .utils import StandardPagination, format_state
+from xpgg_oms.views.utils import StandardPagination, format_state
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -193,17 +193,6 @@ class RolesModelViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.U
         else:
             response_data = {'results': serializer.errors, 'status': False}
             return Response(response_data)
-
-
-# 动态菜单栏用户角色关联表：查询
-# class UserToRolesModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-#     """
-#     list:
-#         动态菜单用户角色关联表
-#
-#     """
-#     queryset = UserToRoles.objects.all()
-#     serializer_class = menus_serializers.UserToRolesSerializer
 
 
 # 动态菜单栏用户角色关联表：查询用户名列表
