@@ -188,7 +188,7 @@ class Routes(models.Model):
     path = models.CharField(max_length=200, verbose_name='路由地址', blank=True, null=True)
     component = models.CharField(max_length=200, verbose_name='组件地址', blank=True, null=True)
     redirect = models.CharField(max_length=200, verbose_name='重定向地址', blank=True, null=True)
-    alwaysShow = models.NullBooleanField(max_length=20, verbose_name='一级菜单是否展示', blank=True, null=True, help_text='顶级菜单记得都要true')
+    alwaysShow = models.NullBooleanField(max_length=20, verbose_name='一级菜单是否展示', blank=True, null=True, help_text='有子菜单的父菜单记得都要true')
     hidden = models.NullBooleanField(max_length=20, verbose_name='是否隐藏', default=False, blank=True, null=True)
     title = models.CharField(max_length=200, verbose_name='标题', blank=True, null=True)
     icon = models.CharField(max_length=200, verbose_name='图标', blank=True, null=True)

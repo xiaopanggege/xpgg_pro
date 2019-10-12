@@ -1,21 +1,12 @@
 from xpgg_oms.models import Roles, Routes, MyUser
-from xpgg_oms import tasks
-from xpgg_oms.views.utils import StandardPagination, format_state
-from rest_framework.views import APIView
+from xpgg_oms.views.utils import StandardPagination
 from rest_framework.response import Response
-from rest_framework import status
 from rest_framework import viewsets
 from rest_framework import mixins
 from rest_framework import filters
-from django.conf import settings
 from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
 from xpgg_oms.serializers import menus_serializers
-import datetime
-import requests
-import json
-import time
-import re
 # 下面这个是py3解决requests请求https误报问题
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)

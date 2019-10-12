@@ -54,6 +54,24 @@ RSYNC_IP = '192.168.1.1'
 RSYNC_PORT = '873'
 
 
+# celery调用参数设置
+CELERY_BROKER_URL = 'redis://:123456@localhost:6379/0'  # 使用redis做为消息队列格式：redis://:password@hostname:port/db_number
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_ENABLE_UTC = True
+CELERY_TIMEZONE = 'Asia/Shanghai'
+CELERY_RESULT_BACKEND = 'django-db'
+# 每个进程执行10个任务就销毁，默认100个会导致内存泄漏听说
+CELERYD_MAX_TASKS_PER_CHILD = 10
+# 官方用来修复CELERY_ENABLE_UTC=False and USE_TZ = False 时时间比较错误的问题；
+# 详情见：https://github.com/celery/django-celery-beat/pull/216/files
+DJANGO_CELERY_BEAT_TZ_AWARE = False
+# 使用django_celery_beat插件用来动态配置任务！其实我在启动的命令里也添加了
+# CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+# 启动任务跟踪，加了这个admin后台的计划任务结果才会显示任务开始状态，不然只有等任务完成才显示成功或者失败
+CELERY_TASK_TRACK_STARTED = True
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -69,6 +87,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'rest_framework_swagger',
+    'django_celery_results',
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -158,9 +178,9 @@ REST_FRAMEWORK = {
     ),
     # 全局权限设置IsAuthenticated为全局都必须登录才能访问，还有其他比如AllowAny就是不限制访问，http://drf.jiuyou.info详细介绍
     'DEFAULT_PERMISSION_CLASSES': (
-        # 'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.IsAuthenticated',
         # 不限制访问用下面这个,默认不设置就是这个了
-        'rest_framework.permissions.AllowAny',
+        # 'rest_framework.permissions.AllowAny',
     ),
     # 自定义异常
     'EXCEPTION_HANDLER': 'xpgg_oms.views.utils.custom_exception_handler',

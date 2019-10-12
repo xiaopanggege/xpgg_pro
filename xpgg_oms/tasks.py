@@ -7,10 +7,22 @@ from xpgg_oms.models import *
 from xpgg_oms.salt_api import SaltAPI
 import requests
 import urllib3
+from celery import shared_task, uuid, result
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 import logging
 logger = logging.getLogger('xpgg_oms.views')
+
+
+@shared_task(bind=True, options={"task_id": "666666"})
+def add(self, x, y):
+    print('我是加法测试，会输出到celery日志中')
+    print(self.AsyncResult(self.request.id).status)
+    time.sleep(30)
+    print(result.AsyncResult.status)
+    print(self.request.id)
+    print('测试看能不能配置task_id')
+    return x + y
 
 
 def saltkey_list():
