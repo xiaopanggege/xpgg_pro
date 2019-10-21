@@ -83,16 +83,28 @@ class IntervalScheduleModelViewSet(viewsets.ModelViewSet):
     queryset = models.IntervalSchedule.objects.all()
     serializer_class = periodic_task_serializers.IntervalScheduleModelSerializer
     pagination_class = StandardPagination
+    filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
+    filter_fields = ('id',)
+    # 可选的排序规则
+    ordering_fields = ('id',)
+    # 默认排序规则
+    ordering = ('id',)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            # 下面都是create源码内容
-            self.perform_create(serializer)
-            response_data = {'results': '添加成功', 'status': True}
-            return Response(response_data)
-        else:
-            response_data = {'results': serializer.errors, 'status': False}
+        # 因为interval的格式验证太麻烦了，我在直接使用serializer.is_valid()时候发现会500错误，原因是没有做验证哈，但是他的model有带验证
+        # 所以如果数据格式不对会抛出异常，但是没办法被drf捕获导致500，所以我自己用try来捕获
+        try:
+            if serializer.is_valid():
+                # 下面都是create源码内容
+                self.perform_create(serializer)
+                response_data = {'results': '添加成功', 'status': True}
+                return Response(response_data)
+            else:
+                response_data = {'results': serializer.errors, 'status': False}
+                return Response(response_data)
+        except Exception as e:
+            response_data = {'results': '提交数据格式不符合interval语法格式，请检查', 'status': False}
             return Response(response_data)
 
 
