@@ -20,9 +20,28 @@ def add(self, x, y):
     print(self.AsyncResult(self.request.id).status)
     time.sleep(30)
     print(result.AsyncResult.status)
+    # 下面这个能够获取到id
     print(self.request.id)
     print('测试看能不能配置task_id')
     return x + y
+
+
+@shared_task(bind=True)
+def cmd(self, periodic_name='未命名', tgt='*', tgt_type='glob', execute_cmd=''):
+    if tgt_type == 'list':
+        tgt = [tgt]
+    with requests.Session() as s:
+        saltapi = SaltAPI(session=s)
+        response_data = saltapi.cmd_run_api(tgt=tgt, tgt_type=tgt_type,
+                                            arg=[execute_cmd, "shell='/bin/bash'",
+                                                 "runas='root'"])
+        time.sleep(30)
+        # 当调用api失败的时候会返回false
+        if response_data['status'] is False:
+            return '任务执行后台出错_error(1)，请联系管理员'
+        else:
+            response_data = response_data['results']['return'][0]
+            return response_data
 
 
 def saltkey_list():
