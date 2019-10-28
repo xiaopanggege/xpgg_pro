@@ -26,7 +26,7 @@ def add(self, x, y):
     return x + y
 
 
-@shared_task(bind=True)
+@shared_task(bind=True, name='命令')
 def cmd(self, periodic_name='未命名', tgt='*', tgt_type='glob', execute_cmd=''):
     if tgt_type == 'list':
         tgt = [tgt]

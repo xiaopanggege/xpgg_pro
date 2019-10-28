@@ -11,10 +11,10 @@ import logging
 logger = logging.getLogger('xpgg_oms.views')
 
 
-# 时钟定时器 增删改
+# 时钟定时器 增删改查
 class ClockedScheduleModelViewSet(viewsets.ModelViewSet):
     """
-        时钟定时器，增删改操作
+        时钟定时器，增删改查操作
 
     """
     queryset = models.ClockedSchedule.objects.all()
@@ -40,10 +40,10 @@ class ClockedScheduleModelViewSet(viewsets.ModelViewSet):
             return Response(response_data)
 
 
-# 计划任务定时器 增删改
+# 计划任务定时器 增删改查
 class CrontabScheduleModelViewSet(viewsets.ModelViewSet):
     """
-        计划任务定时器，增删改操作
+        计划任务定时器，增删改查操作
 
     """
     queryset = models.CrontabSchedule.objects.all()
@@ -74,10 +74,10 @@ class CrontabScheduleModelViewSet(viewsets.ModelViewSet):
             return Response(response_data)
 
 
-# 时间间隔定时器 增删改
+# 时间间隔定时器 增删改查
 class IntervalScheduleModelViewSet(viewsets.ModelViewSet):
     """
-        时间间隔定时器，增删改操作
+        时间间隔定时器，增删改查操作
 
     """
     queryset = models.IntervalSchedule.objects.all()
@@ -108,12 +108,57 @@ class IntervalScheduleModelViewSet(viewsets.ModelViewSet):
             return Response(response_data)
 
 
-# 任务调度 增删改
+# 任务调度 增删改查
 class PeriodicTaskModelViewSet(viewsets.ModelViewSet):
     """
-        任务调度，增删改操作
+        任务调度，增删改查操作
 
     """
     queryset = models.PeriodicTask.objects.all()
     serializer_class = periodic_task_serializers.PeriodicTaskModelSerializer
     pagination_class = StandardPagination
+    filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
+    filter_fields = ('id',)
+    # 可选的排序规则
+    ordering_fields = ('id', 'name')
+    # 默认排序规则
+    ordering = ('id',)
+
+
+# 获取日期列表，任务调度表新增的时候需要显示所有可选日期
+class ClockedListModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """
+    list:
+        任务调度 获取日期列表
+
+    """
+
+    def list(self, request, *args, **kwargs):
+        data = models.ClockedSchedule.objects.values()
+        return Response(data)
+
+
+# 获取Crontab列表，任务调度表新增的时候需要显示所有可选Crontab
+class CrontabListModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """
+    list:
+        任务调度 获取Crontab列表
+
+    """
+
+    # crontab表的timezone字段比较特殊无法直接查询出来用Response返回会报错，所以要调用序列化，序列化里有手动做了处理我
+    queryset = models.CrontabSchedule.objects.all()
+    serializer_class = periodic_task_serializers.CrontabScheduleModelSerializer
+
+
+# 获取Interval列表，任务调度表新增的时候需要显示所有可选Interval
+class IntervalListModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """
+    list:
+        任务调度 获取Interval列表
+
+    """
+
+    def list(self, request, *args, **kwargs):
+        data = models.IntervalSchedule.objects.values()
+        return Response(data)

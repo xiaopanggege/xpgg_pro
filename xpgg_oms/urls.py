@@ -40,8 +40,11 @@ router.register(r'routes', menus.RoutesModelViewSet, base_name='routes')
 router.register(r'roles', menus.RolesModelViewSet, base_name='roles')
 router.register(r'users', menus.UserListModelViewSet, base_name='users')
 router.register(r'periodic_task/clocked-schedule', periodic_task.ClockedScheduleModelViewSet, base_name='clocked-schedule')
+router.register(r'periodic_task/clocked-list', periodic_task.ClockedListModelViewSet, base_name='clocked-list')
 router.register(r'periodic_task/crontab-schedule', periodic_task.CrontabScheduleModelViewSet, base_name='crontab-schedule')
+router.register(r'periodic_task/crontab-list', periodic_task.CrontabListModelViewSet, base_name='crontab-list')
 router.register(r'periodic_task/interval-schedule', periodic_task.IntervalScheduleModelViewSet, base_name='interval-schedule')
+router.register(r'periodic_task/interval-list', periodic_task.IntervalListModelViewSet, base_name='interval-list')
 router.register(r'periodic_task/periodic-task', periodic_task.PeriodicTaskModelViewSet, base_name='periodic-task')
 
 
