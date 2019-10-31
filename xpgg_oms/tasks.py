@@ -35,7 +35,6 @@ def cmd(self, periodic_name='未命名', tgt='*', tgt_type='glob', execute_cmd='
         response_data = saltapi.cmd_run_api(tgt=tgt, tgt_type=tgt_type,
                                             arg=[execute_cmd, "shell='/bin/bash'",
                                                  "runas='root'"])
-        time.sleep(30)
         # 当调用api失败的时候会返回false
         if response_data['status'] is False:
             return '任务执行后台出错_error(1)，请联系管理员'

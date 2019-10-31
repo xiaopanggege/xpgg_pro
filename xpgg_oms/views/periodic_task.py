@@ -6,6 +6,7 @@ from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
 from django_celery_beat import models
+from django.db.models import Q
 from xpgg_oms.serializers import periodic_task_serializers
 import logging
 logger = logging.getLogger('xpgg_oms.views')
@@ -114,7 +115,8 @@ class PeriodicTaskModelViewSet(viewsets.ModelViewSet):
         任务调度，增删改查操作
 
     """
-    queryset = models.PeriodicTask.objects.all()
+    # 只需要给前端显示任务模板是命令或者脚本的任务即可
+    queryset = models.PeriodicTask.objects.filter(Q(task='命令') | Q(task='脚本'))
     serializer_class = periodic_task_serializers.PeriodicTaskModelSerializer
     pagination_class = StandardPagination
     filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
@@ -123,6 +125,34 @@ class PeriodicTaskModelViewSet(viewsets.ModelViewSet):
     ordering_fields = ('id', 'name')
     # 默认排序规则
     ordering = ('id',)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            # 下面都是create源码内容
+            self.perform_create(serializer)
+            response_data = {'results': '添加成功', 'status': True}
+            return Response(response_data)
+        else:
+            response_data = {'results': serializer.errors, 'status': False}
+            return Response(response_data)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        if serializer.is_valid():
+            # 下面都是源码内容
+            self.perform_update(serializer)
+            if getattr(instance, '_prefetched_objects_cache', None):
+                # If 'prefetch_related' has been applied to a queryset, we need to
+                # forcibly invalidate the prefetch cache on the instance.
+                instance._prefetched_objects_cache = {}
+            response_data = {'results': '更新成功', 'status': True}
+            return Response(response_data)
+        else:
+            response_data = {'results': serializer.errors, 'status': False}
+            return Response(response_data)
 
 
 # 获取日期列表，任务调度表新增的时候需要显示所有可选日期

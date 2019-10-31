@@ -1,4 +1,4 @@
-# drf的过滤器，由于不多，所以统一写在一个文件里
+# drf的过滤器，由于不多，所以统一写在一个文件里,后面懒得写一起，都直接写各自的view里去了哈哈
 import django_filters
 from xpgg_oms.models import *
 
