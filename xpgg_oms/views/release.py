@@ -323,6 +323,8 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     """
     serializer_class = release_serializers.ReleaseOperationSerializer
 
+    # 目前发布为单次发布，页面上面批量发布是js代码用for来发送多次请求实现的，后期可以做改进直接传递需要发布的列表进来
+    # 不过要注意如果后端做批量可能需要用到并发实现同时发布单纯用for会一个个发布，而前端我是ajax直接异步for循环请求到后端实现批量同时发布
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
@@ -363,6 +365,8 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                 app_log.append('\n检查应用的Minion_ID出错，可能有Minion已经不存在了，报错信息:' + str(e))
                 result['results'] = app_log
                 return Response(result)
+            # 这里同一个应用发布对多台发布的时候，我选择按顺序发布，这是为了安全考虑，当有一台发布失败后立马停止，如果同时进行有可能在业务
+            # 层面导致多台业务出问题，顺序串行发布可以避免这一情况
             for minion_id in minion_list:
                 app_log.append(
                     ('-' * 10 + ('Minion_ID:%s开始发布 时间戳%s' % (minion_id, time.strftime('%X'))) + '-' * 10).center(

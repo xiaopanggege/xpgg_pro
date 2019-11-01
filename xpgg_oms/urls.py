@@ -46,6 +46,7 @@ router.register(r'periodic_task/crontab-list', periodic_task.CrontabListModelVie
 router.register(r'periodic_task/interval-schedule', periodic_task.IntervalScheduleModelViewSet, base_name='interval-schedule')
 router.register(r'periodic_task/interval-list', periodic_task.IntervalListModelViewSet, base_name='interval-list')
 router.register(r'periodic_task/periodic-task', periodic_task.PeriodicTaskModelViewSet, base_name='periodic-task')
+router.register(r'periodic_task/run-task', periodic_task.RunTaskModelViewSet, base_name='run-task')
 
 
 urlpatterns = [

@@ -37,3 +37,8 @@ class PeriodicTaskModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.PeriodicTask
         fields = '__all__'
+
+
+# 立即执行一次任务 序列化类
+class RunTaskSerializer(serializers.Serializer):
+    id_list = serializers.ListField(help_text='传递id列表')

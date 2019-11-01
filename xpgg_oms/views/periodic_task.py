@@ -7,6 +7,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
 from django_celery_beat import models
 from django.db.models import Q
+from celery import current_app
+from django.template.defaultfilters import pluralize
+from django.utils.translation import ugettext_lazy as _
+from kombu.utils.json import loads
 from xpgg_oms.serializers import periodic_task_serializers
 import logging
 logger = logging.getLogger('xpgg_oms.views')
@@ -192,3 +196,50 @@ class IntervalListModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     def list(self, request, *args, **kwargs):
         data = models.IntervalSchedule.objects.values()
         return Response(data)
+
+
+# 手动立即执行一次任务
+class RunTaskModelViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
+    """
+        create:
+            手动立即执行选中的任务一次
+
+        """
+    queryset = models.PeriodicTask.objects.all()
+    serializer_class = periodic_task_serializers.RunTaskSerializer
+    celery_app = current_app
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            # 从django_celery_beat的admin.py中拷贝过来的代码
+            queryset = models.PeriodicTask.objects.filter(id__in=request.data.get('id_list'))
+            self.celery_app.loader.import_default_modules()
+            tasks = [(self.celery_app.tasks.get(task.task),
+                      loads(task.args),
+                      loads(task.kwargs),
+                      task.queue)
+                     for task in queryset]
+
+            if any(t[0] is None for t in tasks):
+                for i, t in enumerate(tasks):
+                    if t[0] is None:
+                        break
+
+                # variable "i" will be set because list "tasks" is not empty
+                not_found_task_name = queryset[i].task
+                response_data = {'results': 'task "{0}" not found'.format(not_found_task_name), 'status': False}
+                return Response(response_data)
+
+            task_ids = [task.apply_async(args=args, kwargs=kwargs, queue=queue)
+                        if queue and len(queue)
+                        else task.apply_async(args=args, kwargs=kwargs)
+                        for task, args, kwargs, queue in tasks]
+            tasks_run = len(task_ids)
+            response_data = {'results': '{0} task{1} {2} successfully run'.format(tasks_run, pluralize(tasks_run),
+                                                                                  pluralize(tasks_run, _('was,were'))), 'status': True}
+            return Response(response_data)
+        else:
+            response_data = {'results': serializer.errors, 'status': False}
+            return Response(response_data)
+
