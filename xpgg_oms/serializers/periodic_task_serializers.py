@@ -1,4 +1,5 @@
 from django_celery_beat import models
+from django_celery_results.models import TaskResult
 from rest_framework import serializers
 import logging
 logger = logging.getLogger('xpgg_oms.views')
@@ -42,3 +43,10 @@ class PeriodicTaskModelSerializer(serializers.ModelSerializer):
 # 立即执行一次任务 序列化类
 class RunTaskSerializer(serializers.Serializer):
     id_list = serializers.ListField(help_text='传递id列表')
+
+
+# 任务结果序列化类
+class TaskResultScheduleModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TaskResult
+        fields = '__all__'

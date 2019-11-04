@@ -70,6 +70,8 @@ DJANGO_CELERY_BEAT_TZ_AWARE = False
 # CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 # 启动任务跟踪，加了这个admin后台的计划任务结果才会显示任务开始状态，不然只有等任务完成才显示成功或者失败
 CELERY_TASK_TRACK_STARTED = True
+# 任务结果存储的过期时间，默认是1天，改成0不删除，不然每天4点运行的celery.backend_cleanup任务会删除掉我的任务结果奶奶的，当然你也可也停止这个清理任务
+CELERY_TASK_RESULT_EXPIRES = 0
 
 
 # Application definition

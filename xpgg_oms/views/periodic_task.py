@@ -3,9 +3,11 @@ from rest_framework.response import Response
 from rest_framework import viewsets
 from rest_framework import mixins
 from rest_framework import filters
+from rest_framework.decorators import action
 from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
 from django_celery_beat import models
+from django_celery_results.models import TaskResult
 from django.db.models import Q
 from celery import current_app
 from django.template.defaultfilters import pluralize
@@ -123,8 +125,9 @@ class PeriodicTaskModelViewSet(viewsets.ModelViewSet):
     queryset = models.PeriodicTask.objects.filter(Q(task='命令') | Q(task='脚本'))
     serializer_class = periodic_task_serializers.PeriodicTaskModelSerializer
     pagination_class = StandardPagination
-    filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
-    filter_fields = ('id',)
+    filter_backends = (filters.SearchFilter, filters.OrderingFilter)
+    # 搜索框
+    search_fields = ('name',)
     # 可选的排序规则
     ordering_fields = ('id', 'name')
     # 默认排序规则
@@ -241,5 +244,35 @@ class RunTaskModelViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             return Response(response_data)
         else:
             response_data = {'results': serializer.errors, 'status': False}
+            return Response(response_data)
+
+
+# 任务结果表 增删改查
+class TaskResultScheduleModelViewSet(viewsets.ModelViewSet):
+    """
+        任务结果表 增删改查
+
+    """
+    queryset = TaskResult.objects.all()
+    serializer_class = periodic_task_serializers.TaskResultScheduleModelSerializer
+    pagination_class = StandardPagination
+    filter_backends = (filters.SearchFilter, filters.OrderingFilter)
+    # 搜索框
+    search_fields = ('task_name',)
+    # 可选的排序规则
+    ordering_fields = ('id', 'task_name')
+    # 默认排序规则
+    ordering = ('id',)
+
+    # 自定义批量删除方法，action装饰器使得multiple_delete方法可以接受delete操作，detail=False是url不需要传pk
+    @action(methods=['delete'], detail=False)
+    def multiple_delete(self, request, *args, **kwargs):
+        try:
+            id_list = request.query_params.getlist('id_list', None)
+            logger.error(id_list)
+            TaskResult.objects.filter(id__in=id_list).delete()
+            return Response({'results': '删除成功', 'status': True})
+        except Exception as e:
+            response_data = {'results': '提交数据格式不符合规范，请检查', 'status': False}
             return Response(response_data)
 
