@@ -1211,7 +1211,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             # 修改应用状态为空闲
             AppRelease.objects.filter(id=app_id).update(release_status='空闲', release_update_time=datetime.datetime.now())
             # 记录日志
-            AppReleaseLog.objects.create(app_name=app_data.app_name, log_content=app_log, release_result=release_result,
+            AppReleaseLog.objects.create(app_name=app_data.app_name, log_content=json.dumps(app_log), release_result=release_result,
                                          username=username)
 
 
