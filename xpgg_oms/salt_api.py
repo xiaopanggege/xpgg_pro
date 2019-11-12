@@ -52,12 +52,12 @@ class SaltAPI(object):
         count = 2
         connect_test = 1
         status_code = 200
-        headers = {'X-Auth-Token': settings.SITE_SALT_API_TOKEN}
         while count:
             try:
                 # 这里post操作里不用json格式而是用data是因为，我发现用json操作有不需要arg的时候我是把arg:None，用json会参数多余的错
                 # 用data可以正常，用json的时候如果把arg=None的情况从提交里删除，就是不提交arg那也能正常，不过写通用方法比较麻烦感觉
                 # 不过如果用arg:[]则data和json都可以正确识别，目前用data都正常，如果有异常再做变更
+                headers = {'X-Auth-Token': settings.SITE_SALT_API_TOKEN}
                 response_data = self.session.post(self.url, data=data, headers=headers)
                 status_code = response_data.status_code
                 response_data.raise_for_status()
