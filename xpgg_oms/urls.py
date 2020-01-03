@@ -29,6 +29,8 @@ router.register(r'saltstack/salt-cmd-opt/get-cmd', saltstack.SaltCmdCmdleListVie
 router.register(r'saltstack/salt-exe', saltstack.SaltExeViewSet, base_name='salt-exe')
 router.register(r'saltstack/salt-tool/job-search/status', saltstack.SaltToolJobStatusViewSet, base_name='salt-tool-job-search-status')
 router.register(r'saltstack/salt-tool/job-search/result', saltstack.SaltToolJobResultViewSet, base_name='salt-tool-job-search-result')
+router.register(r'saltstack/file-tree', saltstack.FileTreeModelViewSet, base_name='salt-file-tree')
+router.register(r'saltstack/file-manage', saltstack.FileManageModelViewSet, base_name='salt-file-manage')
 router.register(r'release/release-base', release.ReleaseModelViewSet, base_name='release-base')
 router.register(r'release/release-opt', release.ReleaseOperationViewSet, base_name='release-opt')
 router.register(r'release/release-del', release.ReleaseDeleteViewSet, base_name='release-del')

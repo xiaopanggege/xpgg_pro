@@ -8,6 +8,7 @@ from rest_framework.pagination import PageNumberPagination
 from django.utils.six import text_type
 from rest_framework import serializers
 from rest_framework_simplejwt.state import User
+from django.utils.translation import ugettext_lazy as _
 
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.serializers import PasswordField

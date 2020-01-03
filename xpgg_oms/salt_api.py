@@ -573,7 +573,7 @@ class SaltAPI(object):
         else:
             return {'results': response_data, 'status': True}
 
-    # 封装file_exists,检查文件是否存在
+    # 封装file_write,写入文件
     def file_write_api(self, client='local', tgt='*', tgt_type='glob', fun='file.write', arg=None):
         data = {'client': client,
                 'tgt': tgt,
@@ -628,6 +628,36 @@ class SaltAPI(object):
                 'arg': arg,
                 }
         message = 'file_symlink_api'
+        response_data = self.public(data, message)
+        if response_data is False:
+            return {'results': 'SaltAPI调用%s请求出错,请检查saltapi接口是否正常' % message, 'status': False}
+        else:
+            return {'results': response_data, 'status': True}
+
+    # 封装file.diskusage,创建软连接
+    def file_diskusage_api(self, client='local', tgt='*', tgt_type='glob', fun='file.diskusage', arg=None):
+        data = {'client': client,
+                'tgt': tgt,
+                'tgt_type': tgt_type,
+                'fun': fun,
+                'arg': arg,
+                }
+        message = 'file_diskusage_api'
+        response_data = self.public(data, message)
+        if response_data is False:
+            return {'results': 'SaltAPI调用%s请求出错,请检查saltapi接口是否正常' % message, 'status': False}
+        else:
+            return {'results': response_data, 'status': True}
+
+    # 封装file.read,读取文件内容
+    def file_read_api(self, client='local', tgt='*', tgt_type='glob', fun='file.read', arg=None):
+        data = {'client': client,
+                'tgt': tgt,
+                'tgt_type': tgt_type,
+                'fun': fun,
+                'arg': arg,
+                }
+        message = 'file_read_api'
         response_data = self.public(data, message)
         if response_data is False:
             return {'results': 'SaltAPI调用%s请求出错,请检查saltapi接口是否正常' % message, 'status': False}
@@ -810,6 +840,34 @@ class SaltAPI(object):
                 'arg': arg,
                 }
         message = 'git_reset_api'
+        response_data = self.public(data, message)
+        if response_data is False:
+            return {'results': 'SaltAPI调用%s请求出错,请检查saltapi接口是否正常' % message, 'status': False}
+        else:
+            return {'results': response_data, 'status': True}
+
+    # salt-run config.get file_roots:base查看master配置文件中file_roots:base相关配置使用
+    def saltrun_file_roots_api(self, client='runner', fun='config.get', arg='file_roots:base'):
+        data = {'client': client,
+                'fun': fun,
+                'arg': arg,
+                }
+        message = 'saltrun_config_get_api'
+        response_data = self.public(data, message)
+        if response_data is False:
+            return {'results': 'SaltAPI调用%s请求出错,请检查saltapi接口是否正常' % message, 'status': False}
+        else:
+            return {'results': response_data, 'status': True}
+
+    # 封装find查找文件夹命令
+    def find_find_api(self, client='local', tgt='*', tgt_type='glob', fun='file.find', arg=None):
+        data = {'client': client,
+                'tgt': tgt,
+                'tgt_type': tgt_type,
+                'fun': fun,
+                'arg': arg,
+                }
+        message = 'find_find_api'
         response_data = self.public(data, message)
         if response_data is False:
             return {'results': 'SaltAPI调用%s请求出错,请检查saltapi接口是否正常' % message, 'status': False}

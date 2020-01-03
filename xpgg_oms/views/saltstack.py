@@ -690,3 +690,86 @@ class SaltToolJobResultViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet)
             return Response({'results': 'salt快捷工具命令执行任务结果查询后台出错_error(3)：' + str(e), 'status': False})
 
 
+# 文件管理 查树状目录
+class FileTreeModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """
+    list:
+        文件管理 查树状目录
+
+    """
+
+    def list(self, request, *args, **kwargs):
+        base_path = request.query_params.get('base_path')
+        sub_path = request.query_params.get('sub_path', '').rstrip('/')
+        # 获取file_roots的base目录列表，正常是返回{'return': [['/srv/salt']]}
+        if not hasattr(settings, 'SITE_SALT_FILE_ROOTS'):
+            with requests.Session() as s:
+                saltapi = SaltAPI(session=s)
+                response_data = saltapi.saltrun_file_roots_api()
+                # 当调用api失败的时候会返回false
+                if response_data['status'] is False:
+                    logger.error(response_data)
+                    return Response(response_data)
+                else:
+                    try:
+                        settings.SITE_SALT_FILE_ROOTS = response_data['results']['return'][0]
+                    except Exception as e:
+                        return Response({'results': '\n' + '文件管理执行文件目录查询失败_error(1):' + str(response_data), 'status': False})
+        file_roots_base = settings.SITE_SALT_FILE_ROOTS
+        if not base_path:
+            base_path = file_roots_base[0]
+        elif base_path.rstrip('/') not in file_roots_base:
+            return Response({'results': '\n' + '非法目录', 'status': False})
+        # 自己拼接路径，避免用os.path.join导致部署环境是windows时候的问题，其实也没法部署到windows哈
+        full_path = base_path.rstrip('/') + '/' + sub_path
+        with requests.Session() as s:
+            saltapi = SaltAPI(session=s)
+            response_data = saltapi.find_find_api(tgt=settings.SITE_SALT_MASTER, arg=['path=%s' % full_path, 'print=path,type,size','maxdepth=1'])
+            # 当调用api失败的时候会返回false
+            if response_data['status'] is False:
+                logger.error(response_data)
+                return Response(response_data)
+            else:
+                try:
+                    response_path = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
+                except Exception as e:
+                    return Response(
+                        {'results': '\n' + '文件管理执行文件目录查询失败_error(2):' + str(response_data), 'status': False})
+        # 返回的树状目录列表的第一个都是根目录，应该不会有意外情况，我就直接用第一个做根目录
+        return Response({'results': response_path, 'status': True})
+
+
+# 文件管理 文件内容增删改查
+class FileManageModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """
+    list:
+        文件管理 文件内容查看
+
+    """
+
+    def list(self, request, *args, **kwargs):
+        file_path = request.query_params.get('file_path')
+        file_size = request.query_params.get('file_size')
+        file_type = request.query_params.get('file_type')
+        # 返回的是btyes换算成兆M就是下面,大于5M限制打开,如果后期频繁修改建议入库弄个表记录大小,然后弄个页面调整打开大小
+        if file_size > 5242880:
+            return Response(
+                {'results': '\n' + '文件超过5M太大无法打开，需调整上限请联系管理员', 'status': False})
+        elif file_type != 'f':
+            return Response(
+                {'results': '\n' + '请确认是文件夹还是文件', 'status': False})
+        with requests.Session() as s:
+            saltapi = SaltAPI(session=s)
+            response_data = saltapi.file_read_api(tgt=settings.SITE_SALT_MASTER, arg=file_path)
+            # 当调用api失败的时候会返回false
+            if response_data['status'] is False:
+                logger.error(response_data)
+                return Response(response_data)
+            else:
+                try:
+                    file_content = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
+                except Exception as e:
+                    return Response(
+                        {'results': '\n' + '文件管理执行文件大小查询失败_error(2):' + str(response_data), 'status': False})
+        return Response({'results': file_content, 'status': True})
+
