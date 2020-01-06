@@ -13,6 +13,7 @@ from django.conf import settings
 from django_filters.rest_framework import DjangoFilterBackend
 from xpgg_oms.serializers import saltstack_serializers
 from xpgg_oms.filters import MinionListFilter
+import re
 import datetime
 import requests
 # 下面这个是py3解决requests请求https误报问题
@@ -700,7 +701,6 @@ class FileTreeModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     def list(self, request, *args, **kwargs):
         base_path = request.query_params.get('base_path')
-        sub_path = request.query_params.get('sub_path', '').rstrip('/')
         # 获取file_roots的base目录列表，正常是返回{'return': [['/srv/salt']]}
         if not hasattr(settings, 'SITE_SALT_FILE_ROOTS'):
             with requests.Session() as s:
@@ -720,11 +720,9 @@ class FileTreeModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             base_path = file_roots_base[0]
         elif base_path.rstrip('/') not in file_roots_base:
             return Response({'results': '\n' + '非法目录', 'status': False})
-        # 自己拼接路径，避免用os.path.join导致部署环境是windows时候的问题，其实也没法部署到windows哈
-        full_path = base_path.rstrip('/') + '/' + sub_path
         with requests.Session() as s:
             saltapi = SaltAPI(session=s)
-            response_data = saltapi.find_find_api(tgt=settings.SITE_SALT_MASTER, arg=['path=%s' % full_path, 'print=path,type,size','maxdepth=1'])
+            response_data = saltapi.find_find_api(tgt=settings.SITE_SALT_MASTER, arg=['path=%s' % base_path.rstrip('/'), 'print=path,type,size'])
             # 当调用api失败的时候会返回false
             if response_data['status'] is False:
                 logger.error(response_data)
@@ -735,8 +733,30 @@ class FileTreeModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
                 except Exception as e:
                     return Response(
                         {'results': '\n' + '文件管理执行文件目录查询失败_error(2):' + str(response_data), 'status': False})
-        # 返回的树状目录列表的第一个都是根目录，应该不会有意外情况，我就直接用第一个做根目录
-        return Response({'results': response_path, 'status': True})
+        # 返回的树状目录列表，下面是按照salt的find命令得到的内容做了处理最终变成一个树状列表，太难了奶奶的搞了好久才想出来
+        b = len(response_path)
+        for i in range(b):
+            path = response_path[i][0]
+            repath = re.sub(r"^%s" % base_path.rstrip('/'), "", path, 1)
+            data = repath.split('/')[1:]
+            response_path[i] = {'label': data[-1] if data else data, 'type': response_path[i][1], 'id': i + 1, 'size': response_path[i][2], 'floor': len(data)}
+            if response_path[i]['floor'] == 0:
+                response_path[i]['label'] = base_path.rstrip('/')
+            else:
+                floor = response_path[i]['floor'] - 1
+                check = 1
+                count = i
+                while count:
+                    if response_path[i - check]['floor'] == floor:
+                        if response_path[i - check].get('children'):
+                            response_path[i - check]['children'].append(response_path[i])
+                        else:
+                            response_path[i - check]['children'] = [response_path[i]]
+                        count = 0
+                    else:
+                        check += 1
+                        count -= 1
+        return Response({'results': [response_path[0]], 'status': True})
 
 
 # 文件管理 文件内容增删改查
