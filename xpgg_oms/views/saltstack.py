@@ -700,6 +700,7 @@ class FileTreeModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """
 
     def list(self, request, *args, **kwargs):
+        # 这里留了一个口，可以传递目录进来查询，不过实际前端并不需要传递，下面直接通过salt获取到目录了
         base_path = request.query_params.get('base_path')
         # 获取file_roots的base目录列表，正常是返回{'return': [['/srv/salt']]}
         if not hasattr(settings, 'SITE_SALT_FILE_ROOTS'):
@@ -714,12 +715,12 @@ class FileTreeModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
                     try:
                         settings.SITE_SALT_FILE_ROOTS = response_data['results']['return'][0]
                     except Exception as e:
-                        return Response({'results': '\n' + '文件管理执行文件目录查询失败_error(1):' + str(response_data), 'status': False})
+                        return Response({'results': '文件管理执行文件目录查询失败_error(1):' + str(response_data), 'status': False})
         file_roots_base = settings.SITE_SALT_FILE_ROOTS
         if not base_path:
             base_path = file_roots_base[0]
         elif base_path.rstrip('/') not in file_roots_base:
-            return Response({'results': '\n' + '非法目录', 'status': False})
+            return Response({'results': '非法目录', 'status': False})
         with requests.Session() as s:
             saltapi = SaltAPI(session=s)
             response_data = saltapi.find_find_api(tgt=settings.SITE_SALT_MASTER, arg=['path=%s' % base_path.rstrip('/'), 'print=path,type,size'])
@@ -732,14 +733,15 @@ class FileTreeModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
                     response_path = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
                 except Exception as e:
                     return Response(
-                        {'results': '\n' + '文件管理执行文件目录查询失败_error(2):' + str(response_data), 'status': False})
+                        {'results': '文件管理执行文件目录查询失败_error(2):' + str(response_data), 'status': False})
         # 返回的树状目录列表，下面是按照salt的find命令得到的内容做了处理最终变成一个树状列表，太难了奶奶的搞了好久才想出来
         b = len(response_path)
         for i in range(b):
             path = response_path[i][0]
             repath = re.sub(r"^%s" % base_path.rstrip('/'), "", path, 1)
             data = repath.split('/')[1:]
-            response_path[i] = {'label': data[-1] if data else data, 'type': response_path[i][1], 'id': i + 1, 'size': response_path[i][2], 'floor': len(data)}
+            response_path[i] = {'label': data[-1] if data else data, 'type': response_path[i][1], 'id': i + 1,
+                                'size': response_path[i][2], 'floor': len(data), 'full_path': path}
             if response_path[i]['floor'] == 0:
                 response_path[i]['label'] = base_path.rstrip('/')
             else:
@@ -771,13 +773,15 @@ class FileManageModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         file_path = request.query_params.get('file_path')
         file_size = request.query_params.get('file_size')
         file_type = request.query_params.get('file_type')
+        logger.error(type(file_size))
+        logger.error(file_size)
         # 返回的是btyes换算成兆M就是下面,大于5M限制打开,如果后期频繁修改建议入库弄个表记录大小,然后弄个页面调整打开大小
-        if file_size > 5242880:
+        if str(file_size).isdigit() and int(str(file_size)) > 5242880:
             return Response(
-                {'results': '\n' + '文件超过5M太大无法打开，需调整上限请联系管理员', 'status': False})
+                {'results': '文件超过5M太大无法打开，需调整上限请联系管理员', 'status': False})
         elif file_type != 'f':
             return Response(
-                {'results': '\n' + '请确认是文件夹还是文件', 'status': False})
+                {'results': '文件读取失败，请确认是文件夹还是文件', 'status': False})
         with requests.Session() as s:
             saltapi = SaltAPI(session=s)
             response_data = saltapi.file_read_api(tgt=settings.SITE_SALT_MASTER, arg=file_path)
@@ -790,6 +794,6 @@ class FileManageModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
                     file_content = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
                 except Exception as e:
                     return Response(
-                        {'results': '\n' + '文件管理执行文件大小查询失败_error(2):' + str(response_data), 'status': False})
+                        {'results': '文件读取失败_error(1):' + str(response_data), 'status': False})
         return Response({'results': file_content, 'status': True})
 
