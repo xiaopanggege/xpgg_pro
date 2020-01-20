@@ -43,15 +43,25 @@ SITE_SALT_API_TOKEN = ''
 SITE_SALT_MASTER = '172.16.0.7-master'
 # salt服务端IP，salt-ssh等调用
 SITE_SALT_MASTER_IP = '172.16.0.7'
-# 发布系统中随机生成svn目录的路径和名字前缀，这里是xiaopgg作为前缀嘿嘿
+# web端宿主机的minion id
+SITE_WEB_MINION = '172.16.0.7-master'
+# rsync服务端的宿主机minion id，发布系统的检出文件存放在rsync服务器里，如rsync服务是在master机子上salt自带的同步才能用，为了
+# 解耦发布系统取消salt同步只保留rsync同步
+SITE_RSYNC_MINION = '172.16.0.7-master'
+# 发布系统中随机生成svn/git目录的路径和名字前缀，这里是xiaopgg作为前缀嘿嘿
 # 在views.py里后面加上当前时间来组成完整的目录路径，千万别出现中文因为py2版salt中文支持不好，出现中文后同步文件时目录可以同步文件不同步过去反而全被删除！！
 SITE_BASE_CO_PATH = '/data/xpgg_co/xpgg'
 # 在用salt同步文件过程中发如果salt的master配置文件中的file_roots定义的svn目录内文件太多会非常的慢
-# 所以使用的软连接的方式同步完删除软连接来保持file_roots目录的整洁，这个目录要在master配置文件中也定义名称为svn指定目录和下面一样
+# 所以使用的软连接的方式同步完删除软连接来保持file_roots目录的整洁，这个目录要在master配置文件中也定义名称为svn指定目录和下面一样。弃用！！
 SITE_BASE_CO_SYMLINK_PATH = '/data/xpgg_symlink/'
-# rsync的默认ip和端口
-RSYNC_IP = '192.168.1.1'
-RSYNC_PORT = '873'
+# 文件服务使用的临时目录
+SITE_BASE_TMP_PATH = '/data/xpgg_tmp/'
+# 文件服务器rsync的内网ip和端口
+SITE_RSYNC_IP = '172.16.0.7'
+SITE_RSYNC_PORT = '873'
+# web服务器rsync的内网ip和端口,如果rsync服务器和web服务器不是同一台，则web服务器也需要开启rsync的daemon用来给文件服务的上传更新使用
+SITE_WEB_RSYNC_IP = '172.16.0.7'
+SITE_WEB_RSYNC_PORT = '873'
 
 
 # celery调用参数设置
@@ -71,6 +81,7 @@ DJANGO_CELERY_BEAT_TZ_AWARE = False
 # 启动任务跟踪，加了这个admin后台的计划任务结果才会显示任务开始状态，不然只有等任务完成才显示成功或者失败
 CELERY_TASK_TRACK_STARTED = True
 # 任务结果存储的过期时间，默认是1天，改成0不删除，不然每天4点运行的celery.backend_cleanup任务会删除掉我的任务结果奶奶的，当然你也可也停止这个清理任务
+# 后面发现还是停止清理任务靠谱点。。哈
 CELERY_TASK_RESULT_EXPIRES = 0
 
 
@@ -91,6 +102,7 @@ INSTALLED_APPS = [
     'rest_framework_swagger',
     'django_celery_results',
     'django_celery_beat',
+    'django_cleanup.apps.CleanupConfig',  # 清理通过model上传的图片或者文件的旧文件，因为默认不会自动删除旧文件
 ]
 
 MIDDLEWARE = [

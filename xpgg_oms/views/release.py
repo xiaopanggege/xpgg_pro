@@ -95,9 +95,7 @@ class ReleaseModelViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixi
     def get_serializer_class(self):
         if self.action == "list":
             return release_serializers.ReleaseModelSerializer
-        elif self.action == "create":
-            return release_serializers.ReleaseCreateSerializer
-        elif self.action == "update":
+        elif self.action == "create" or self.action == "update" or self.action == "partial_update":
             return release_serializers.ReleaseCreateSerializer
         return release_serializers.ReleaseModelSerializer
 
@@ -113,6 +111,19 @@ class ReleaseModelViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixi
             return queryset
         except Exception as e:
             return AppRelease.objects.none()
+
+    # 调用list返回内容自定义,因为只有list才会调用分页
+    def get_paginated_response(self, data):
+        """
+        动态的给自定义分页返回内容的msg字段添加数据
+        """
+        assert self.paginator is not None
+        # 下面就是要添加的msg内容,把rsync的ip和端口一起返回给前端
+        msg = {'rsync_ip': settings.SITE_RSYNC_IP, 'rsync_port': settings.SITE_RSYNC_PORT}
+
+        response_data = self.paginator.get_paginated_response(data)
+        response_data.data['msg'] = msg
+        return response_data
 
     def retrieve(self, request, *args, **kwargs):
         app_list = AppRelease.objects.all().order_by('create_time').values('id', 'app_name')
@@ -164,12 +175,13 @@ class ReleaseModelViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixi
                     result = {'results': '', 'status': False}
                     with requests.Session() as s:
                         saltapi = SaltAPI(session=s)
-                        response_data = saltapi.file_remove_api(tgt=settings.SITE_SALT_MASTER, arg=[co_path])
+                        # 检出存放在RSYNC服务端的目录下，原来是设计放到master，但是后面想想这样不合适项目打包并且对master端改动较大
+                        response_data = saltapi.file_remove_api(tgt=settings.SITE_RSYNC_MINION, arg=[co_path])
                         if response_data['status'] is False:
                             result['results'] = '更新应用在删除应用原检出内容时失败，%s' % response_data['results']
                             return Response(result)
                         else:
-                            response_data = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
+                            response_data = response_data['results']['return'][0][settings.SITE_RSYNC_MINION]
                             if response_data is True:
                                 # 删除成功后提交更新，记得把co_status检出状态还原为False,
                                 # 检出目录还是不变，在做发布的时候会重新自动创建出来不用担心
@@ -227,24 +239,24 @@ class ReleaseDeleteViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                 with requests.Session() as s:
                     saltapi = SaltAPI(session=s)
                     # 判断一下检出的目录是否存在，因为如果没发布过，目录还没生成，存在的话删除项目的时候要顺带删除
-                    response_data = saltapi.file_directory_exists_api(tgt=settings.SITE_SALT_MASTER,
+                    response_data = saltapi.file_directory_exists_api(tgt=settings.SITE_RSYNC_MINION,
                                                                       arg=[co_path])
                     # 当调用api失败的时候会返回false
                     if response_data['status'] is False:
                         result['results'] = '删除应用失败error(1)，%s' % response_data['results']
                         return Response(result)
                     else:
-                        response_data = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
+                        response_data = response_data['results']['return'][0][settings.SITE_RSYNC_MINION]
                         if response_data is True:
-                            # 删除master端项目的检出目录
-                            response_data = saltapi.file_remove_api(tgt=settings.SITE_SALT_MASTER,
+                            # 删除web端项目的检出目录
+                            response_data = saltapi.file_remove_api(tgt=settings.SITE_RSYNC_MINION,
                                                                     arg=[co_path])
                             # 当调用api失败的时候会返回false
                             if response_data['status'] is False:
                                 result['results'] = '删除应用失败error(2)，%s' % response_data['results']
                                 return Response(result)
                             else:
-                                response_data = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
+                                response_data = response_data['results']['return'][0][settings.SITE_RSYNC_MINION]
                                 if response_data is True:
                                     pass
                                 else:
@@ -392,7 +404,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                     release_version, operation_arguments['app_svn_url'], app_data.co_path,
                                     operation_arguments['app_svn_user'], operation_arguments['app_svn_password'])
                                 check_data = 'Checked out revision'
-                            response_data = saltapi.cmd_run_api(tgt=settings.SITE_SALT_MASTER, arg=[
+                            response_data = saltapi.cmd_run_api(tgt=settings.SITE_RSYNC_MINION, arg=[
                                 cmd_data, 'reset_system_locale=false', "shell='/bin/bash'", "runas='root'"])
                             # 当调用api失败的时候会返回false
                             if response_data['status'] is False:
@@ -400,7 +412,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                 result['results'] = app_log
                                 return Response(result)
                             else:
-                                response_data = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
+                                response_data = response_data['results']['return'][0][settings.SITE_RSYNC_MINION]
 
                                 if check_data in response_data:
                                     AppRelease.objects.filter(id=app_id).update(co_status=True)
@@ -427,7 +439,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                             # 判断状态是否为True，如果有说明已经检出过，那就使用更新pull，如果没有就用git clone
                             if co_status is not True:
                                 app_log.append('\n\ngit clone ....\n')
-                                response_data = saltapi.git_clone_api(tgt=settings.SITE_SALT_MASTER, arg=[
+                                response_data = saltapi.git_clone_api(tgt=settings.SITE_RSYNC_MINION, arg=[
                                     'cwd=%s' % app_data.co_path.rsplit('/', 1)[0],
                                     'url=%s' % app_git_url_join_usr_passwd,
                                     'name=%s' % app_data.co_path.rsplit('/', 1)[1],
@@ -435,11 +447,11 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                 check_data = True
                             else:
                                 if release_version == 'HEAD':
-                                    response_data = saltapi.git_pull_api(tgt=settings.SITE_SALT_MASTER,
+                                    response_data = saltapi.git_pull_api(tgt=settings.SITE_RSYNC_MINION,
                                                                          arg=[app_data.co_path])
                                     check_data = 'Updating'
                                 else:
-                                    response_data = saltapi.git_reset_api(tgt=settings.SITE_SALT_MASTER,
+                                    response_data = saltapi.git_reset_api(tgt=settings.SITE_RSYNC_MINION,
                                                                           arg=[app_data.co_path,
                                                                                'opts="--hard %s"' % release_version])
                                     check_data = 'HEAD is now at'
@@ -449,7 +461,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                 result['results'] = app_log
                                 return Response(result)
                             else:
-                                response_data = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
+                                response_data = response_data['results']['return'][0][settings.SITE_RSYNC_MINION]
                                 # 对结果进行判断，妈的用salt的module方式还得自个判断结果，比较麻烦一点，而且if还有可能代码错误得加try
                                 try:
                                     if response_data is True or check_data in response_data or 'Already up' in response_data:
@@ -476,7 +488,15 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                     return Response(result)
                     elif operation == '同步文件':
                         sync_file_method = operation_arguments.get('sync_file_method', 'salt')
+                        # 2020年正式弃用salt自带的同步，只使用rsync，另外由于代码检出目录从master移到rsync服务端所以也无法使用salt的同步了
+                        # 除非rsync服务端和master在同一台上面,并且master配置文件的file_roots添加xpgg兵指定目录是下面软连接的目录，然后
+                        # sls脚本里面saltenv也要配置一直为xpgg
                         if sync_file_method == 'salt':
+                            if settings.SITE_SALT_MASTER != settings.SITE_RSYNC_MINION:
+                                app_log.append(
+                                    '\nrsync服务与salt-master分属不同服务器无法使用salt同步文件，请修改为rsync同步文件感谢. 时间戳%s\n' % time.strftime('%X'))
+                                result['results'] = app_log
+                                return Response(result)
                             source_path = app_data.co_path.rstrip('/').rsplit('/', 1)[1]
                             sync_file_check_diff = operation_arguments['sync_file_check_diff']
                             symlink_path = settings.SITE_BASE_CO_SYMLINK_PATH + source_path
@@ -484,14 +504,14 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                             with requests.Session() as s:
                                 saltapi = SaltAPI(session=s)
                                 # 先创建软连接
-                                response_data = saltapi.file_symlink_api(tgt=settings.SITE_SALT_MASTER,
+                                response_data = saltapi.file_symlink_api(tgt=settings.SITE_RSYNC_MINION,
                                                                          arg=[app_data.co_path, symlink_path])
                                 if response_data['status'] is False:
                                     app_log.append('\n同步文件后台出错,SaltAPI调用file_symlink_api请求出错，请联系管理员. 时间戳%s\n' % time.strftime('%X'))
                                     result['results'] = app_log
                                     return Response(result)
                                 else:
-                                    if response_data['results']['return'][0][settings.SITE_SALT_MASTER] is not True:
+                                    if response_data['results']['return'][0][settings.SITE_RSYNC_MINION] is not True:
                                         # 如果软连接创建失败会返回：{'return': [{'192.168.100.170': False}]}
                                         app_log.append('同步文件过程中，创建软连接失败\n' + str(response_data))
                                         app_log.append('\n' + '文件同步失败！！ 时间戳%s\n' % time.strftime('%X'))
@@ -604,14 +624,14 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                         return Response(result)
                                     finally:
                                         # 释放掉软连接
-                                        response_data = saltapi.file_remove_api(tgt=settings.SITE_SALT_MASTER,
+                                        response_data = saltapi.file_remove_api(tgt=settings.SITE_RSYNC_MINION,
                                                                                 arg=[symlink_path])
                                         # 当调用api失败的时候会返回false
                                         if response_data['status'] is False:
                                             app_log.append('删除软连接失败(0)，未避免目录不断膨胀请联系管理员删除软连接\n')
                                         else:
                                             response_data = response_data['results']['return'][0][
-                                                settings.SITE_SALT_MASTER]
+                                                settings.SITE_RSYNC_MINION]
                                             if response_data is True:
                                                 app_log.append('\n释放软连接成功\n')
                                             else:
@@ -619,9 +639,9 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                         elif sync_file_method == 'rsync':
                             source_path = app_data.co_path.rstrip('/').rsplit('/', 1)[1]
                             sync_file_check_diff = operation_arguments.get('sync_file_check_diff')
-                            rsync_ip = operation_arguments.get('rsync_ip', settings.RSYNC_IP)
+                            rsync_ip = operation_arguments.get('rsync_ip', settings.SITE_RSYNC_IP)
                             # salt-2018.3.0以前rsync的参数中没有additional_opts，无法指定很多东西，2018版本就有了，留这里为了新版使用
-                            rsync_port = operation_arguments.get('rsync_port', settings.RSYNC_PORT)
+                            rsync_port = operation_arguments.get('rsync_port', settings.SITE_RSYNC_PORT)
                             app_log.append('\n\n开始执行同步文件-> 时间戳%s\n' % time.strftime('%X'))
                             with requests.Session() as s:
                                 saltapi = SaltAPI(session=s)
@@ -631,7 +651,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                 else:
                                     name_path = app_data.app_path
                                 jid = saltapi.async_state_api(tgt=minion_id, arg=["rsync_dir",
-                                                                                  "pillar={'sync_file_method':'%s','mkdir_path':'%s','rsync_ip':'%s','rsync_port':'%s','source_path':'%s','name_path':'%s','user':%s,'sync_file_check_diff':'%s'}" % (
+                                                                                  "pillar={'sync_file_method':'%s','mkdir_path':'%s','rsync_ip':'%s','rsync_port':'%s','source_path':'%s','name_path':'%s','user':'%s','sync_file_check_diff':'%s'}" % (
                                                                                       sync_file_method, app_data.app_path,
                                                                                       rsync_ip, rsync_port,
                                                                                       source_path,

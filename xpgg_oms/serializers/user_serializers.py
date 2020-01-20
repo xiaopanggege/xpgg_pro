@@ -36,7 +36,7 @@ class MyUserDetailSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data['password'] = make_password(validated_data.get('password'))
-        logger.error(validated_data.get('avatar'))
+        # logger.error(validated_data.get('avatar'))
         return MyUser.objects.create(**validated_data)
 
     def update(self, instance, validated_data):

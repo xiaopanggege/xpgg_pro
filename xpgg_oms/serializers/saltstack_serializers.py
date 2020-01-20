@@ -190,3 +190,17 @@ class SaltToolJobResultSerializer(serializers.Serializer):
         if value != 'search_jid_result':
             raise serializers.ValidationError("未知的参数")
         return value
+
+
+# 文件管理 获取文件内容参数序列化
+class FileManageContentSerializer(serializers.Serializer):
+    file_size = serializers.CharField(max_length=100, help_text='文件大小')
+    file_path = serializers.CharField(max_length=500, help_text='文件全路径')
+    file_type = serializers.CharField(max_length=10, help_text='文件类型')
+
+
+# 文件管理 文件更新传参序列化
+class FileManageUpdateSerializer(serializers.Serializer):
+    file = serializers.CharField(help_text='更新文件内容')
+    file_name = serializers.CharField(max_length=100, help_text='更新文件名')
+    file_path = serializers.CharField(max_length=500, help_text='更新文件全路径')

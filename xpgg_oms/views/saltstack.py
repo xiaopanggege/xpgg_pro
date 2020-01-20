@@ -9,11 +9,13 @@ from rest_framework import status
 from rest_framework import viewsets
 from rest_framework import mixins
 from rest_framework import filters
+from rest_framework.decorators import action
 from django.conf import settings
 from django_filters.rest_framework import DjangoFilterBackend
 from xpgg_oms.serializers import saltstack_serializers
 from xpgg_oms.filters import MinionListFilter
 import re
+import os
 import datetime
 import requests
 # 下面这个是py3解决requests请求https误报问题
@@ -696,6 +698,8 @@ class FileTreeModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """
     list:
         文件管理 查树状目录
+    file_update:
+        文件管理 更新文件
 
     """
 
@@ -713,6 +717,7 @@ class FileTreeModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
                     return Response(response_data)
                 else:
                     try:
+                        # 结果是一个目录的列表
                         settings.SITE_SALT_FILE_ROOTS = response_data['results']['return'][0]
                     except Exception as e:
                         return Response({'results': '文件管理执行文件目录查询失败_error(1):' + str(response_data), 'status': False})
@@ -762,19 +767,33 @@ class FileTreeModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
 
 # 文件管理 文件内容增删改查
-class FileManageModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+class FileManageModelViewSet(viewsets.GenericViewSet):
     """
-    list:
+    file_content:
         文件管理 文件内容查看
+    file_update:
+        文件管理 文件更新
 
     """
 
-    def list(self, request, *args, **kwargs):
-        file_path = request.query_params.get('file_path')
-        file_size = request.query_params.get('file_size')
-        file_type = request.query_params.get('file_type')
-        logger.error(type(file_size))
-        logger.error(file_size)
+    # 动态选择serializer
+    def get_serializer_class(self):
+        if self.action == "list":
+            return saltstack_serializers.FileManageContentSerializer
+        elif self.action == "create":
+            return saltstack_serializers.FileManageUpdateSerializer
+        return saltstack_serializers.FileManageContentSerializer
+
+    # 自定义查看文件内容方法
+    @action(methods=['post'], detail=False)
+    def file_content(self, request):
+        serializer = saltstack_serializers.FileManageContentSerializer(data=request.data)
+        if not serializer.is_valid():
+            response_data = {'results': serializer.errors, 'status': False}
+            return Response(response_data)
+        file_path = request.data.get('file_path')
+        file_size = request.data.get('file_size')
+        file_type = request.data.get('file_type')
         # 返回的是btyes换算成兆M就是下面,大于5M限制打开,如果后期频繁修改建议入库弄个表记录大小,然后弄个页面调整打开大小
         if str(file_size).isdigit() and int(str(file_size)) > 5242880:
             return Response(
@@ -796,4 +815,75 @@ class FileManageModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
                     return Response(
                         {'results': '文件读取失败_error(1):' + str(response_data), 'status': False})
         return Response({'results': file_content, 'status': True})
+
+    # 自定义更新文件方法
+    @action(methods=['post'], detail=False)
+    def file_update(self, request):
+        serializer = saltstack_serializers.FileManageUpdateSerializer(data=request.data)
+        if not serializer.is_valid():
+            response_data = {'results': serializer.errors, 'status': False}
+            return Response(response_data)
+        file = request.data.get('file')
+        file_name = request.data.get('file_name')
+        file_path = request.data.get('file_path')
+        file_name = file_name + '_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+        tmp_path = os.path.join(settings.SITE_BASE_TMP_PATH,  '%s' % file_name)
+        try:
+            with requests.Session() as s:
+                saltapi = SaltAPI(session=s)
+                # 如果master和rsync服务器和web服务器是同一台则直接保存到对应的文件位置即可
+                if settings.SITE_WEB_MINION == settings.SITE_RSYNC_MINION == settings.SITE_SALT_MASTER:
+                    try:
+                        logger.error('123123123')
+                        logger.error(file_path)
+                        with open('%s' % file_path, 'w') as f:
+                            f.write(file)
+                    except FileNotFoundError:
+                        os.makedirs(os.path.dirname(file_path))
+                        with open('%s' % file_path, 'w') as f:
+                            f.write(file)
+                else:
+                    try:
+                        with open('%s' % tmp_path, 'w') as f:
+                            f.write(file)
+                    except FileNotFoundError:
+                        os.makedirs(settings.SITE_BASE_TMP_PATH)
+                        with open('%s' % tmp_path, 'w') as f:
+                            f.write(file)
+                    # rsync服务器和web服务器是同一台则先存入rsync的daemon指定的目录中即tmp_path里然后同步到master
+                    if settings.SITE_WEB_MINION == settings.SITE_RSYNC_MINION:
+                        # 下面有一个xpgg_tmp是rsync定义的文件源，记得要和rsync服务端daemo里一致
+                        response_data = saltapi.rsync_rsync_api(tgt=settings.SITE_SALT_MASTER, arg=[
+                            'src=rsync://{ip}:{port}/xpgg_tmp/{file_name}'.format(ip=settings.SITE_RSYNC_IP,
+                                                                                  port=settings.SITE_RSYNC_PORT,
+                                                                                  file_name=file_name,
+                                                                                  file_path=file_path),
+                            'dst={file_path}'.format(file_path=file_path)])
+                    # 如果rsync服务和web服务器和master服务器3个都是独立的，则web服务器也需要开启rsync的daemon，然后把文件先存入web服务器的
+                    # rsync对应目录中，master从web服务器去拉取这个文件即可
+                    else:
+                        # 下面有一个xpgg_tmp是rsync定义的文件源，记得要和rsync服务端daemo里一致
+                        response_data = saltapi.rsync_rsync_api(tgt=settings.SITE_SALT_MASTER, arg=[
+                            'src=rsync://{ip}:{port}/xpgg_tmp/{file_name}'.format(ip=settings.SITE_WEB_RSYNC_IP,
+                                                                                  port=settings.SITE_WEB_RSYNC_PORT,
+                                                                                  file_name=file_name,
+                                                                                  file_path=file_path),
+                            'dst={file_path}'.format(file_path=file_path)])
+                    # 当调用api失败的时候会返回false
+                    if response_data['status'] is False:
+                        logger.error(response_data)
+                        return Response(response_data)
+                    else:
+                        try:
+                            data = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
+                            if data.get('retcode') != 0:
+                                return Response({'results': '更新文件在同步时失败_error(0):' + str(data['stderr']), 'status': False})
+                        except Exception as e:
+                            return Response({'results': '更新文件在同步时失败_error(1):' + str(e), 'status': False})
+                        finally:
+                            os.remove(tmp_path)
+        except Exception as e:
+            return Response({'results': '更新文件失败_error(2):' + str(e), 'status': False})
+        return Response({'results': '更新成功', 'status': True})
+
 

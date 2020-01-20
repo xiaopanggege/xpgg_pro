@@ -99,6 +99,9 @@ class ReleaseCreateSerializer(serializers.Serializer):
                     error_msg['rsync_port'] = ['rsync_port不能为空']
             elif data.get('sync_file_method', '').strip() == 'salt':
                 operation_arguments['sync_file_method'] = data.get('sync_file_method')
+                # 同步方法为salt时候也需要把rsync的端口什么的赋值为默认值，这样前端才不会获取到空，方便前端编辑应用时候更换同步方式
+                operation_arguments['rsync_ip'] = settings.SITE_RSYNC_IP
+                operation_arguments['rsync_port'] = settings.SITE_RSYNC_PORT
             else:
                 error_msg['sync_file_method'] = ['同步文件方式不能为空']
         if '应用停止' in data.get('operation_list'):
