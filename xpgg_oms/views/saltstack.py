@@ -763,7 +763,8 @@ class FileTreeModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
                     else:
                         check += 1
                         count -= 1
-        return Response({'results': [response_path[0]], 'status': True})
+        # 多返回一个max_id，主要是前端创建文件或者文件夹的时候需要用到id，避免下重复
+        return Response({'results': [response_path[0]], 'max_id': b, 'status': True})
 
 
 # 文件管理 文件内容增删改查
@@ -773,6 +774,10 @@ class FileManageModelViewSet(viewsets.GenericViewSet):
         文件管理 文件内容查看
     file_update:
         文件管理 文件更新
+    file_create:
+        创建文件或者文件夹
+    file_rename:
+        重命名文件或者文件夹
 
     """
 
@@ -791,9 +796,9 @@ class FileManageModelViewSet(viewsets.GenericViewSet):
         if not serializer.is_valid():
             response_data = {'results': serializer.errors, 'status': False}
             return Response(response_data)
-        file_path = request.data.get('file_path')
-        file_size = request.data.get('file_size')
-        file_type = request.data.get('file_type')
+        file_path = serializer.validated_data.get('file_path')
+        file_size = serializer.validated_data.get('file_size')
+        file_type = serializer.validated_data.get('file_type')
         # 返回的是btyes换算成兆M就是下面,大于5M限制打开,如果后期频繁修改建议入库弄个表记录大小,然后弄个页面调整打开大小
         if str(file_size).isdigit() and int(str(file_size)) > 5242880:
             return Response(
@@ -823,9 +828,9 @@ class FileManageModelViewSet(viewsets.GenericViewSet):
         if not serializer.is_valid():
             response_data = {'results': serializer.errors, 'status': False}
             return Response(response_data)
-        file = request.data.get('file')
-        file_name = request.data.get('file_name')
-        file_path = request.data.get('file_path')
+        file = serializer.validated_data.get('file')
+        file_name = serializer.validated_data.get('file_name')
+        file_path = serializer.validated_data.get('file_path')
         file_name = file_name + '_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         tmp_path = os.path.join(settings.SITE_BASE_TMP_PATH,  '%s' % file_name)
         try:
@@ -834,8 +839,6 @@ class FileManageModelViewSet(viewsets.GenericViewSet):
                 # 如果master和rsync服务器和web服务器是同一台则直接保存到对应的文件位置即可
                 if settings.SITE_WEB_MINION == settings.SITE_RSYNC_MINION == settings.SITE_SALT_MASTER:
                     try:
-                        logger.error('123123123')
-                        logger.error(file_path)
                         with open('%s' % file_path, 'w') as f:
                             f.write(file)
                     except FileNotFoundError:
@@ -885,5 +888,63 @@ class FileManageModelViewSet(viewsets.GenericViewSet):
         except Exception as e:
             return Response({'results': '更新文件失败_error(2):' + str(e), 'status': False})
         return Response({'results': '更新成功', 'status': True})
+
+    # 自定义创建文件或者文件夹
+    @action(methods=['post'], detail=False)
+    def file_create(self, request):
+        serializer = saltstack_serializers.FileManageCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            response_data = {'results': serializer.errors, 'status': False}
+            return Response(response_data)
+        file_path = serializer.validated_data.get('file_path')
+        file_type = serializer.validated_data.get('file_type')
+        with requests.Session() as s:
+            saltapi = SaltAPI(session=s)
+            if file_type == 'd':
+                response_data = saltapi.file_mkdir_api(tgt=settings.SITE_SALT_MASTER, arg=file_path)
+            else:
+                response_data = saltapi.file_touch_api(tgt=settings.SITE_SALT_MASTER, arg=file_path)
+            # 当调用api失败的时候会返回false
+            if response_data['status'] is False:
+                logger.error(response_data)
+                return Response(response_data)
+            else:
+                try:
+                    response_data = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
+                    if response_data is True:
+                        return Response({'results': '创建成功', 'status': True})
+                    else:
+                        return Response({'results': '创建失败，error:%s' % response_data, 'status': False})
+                except Exception as e:
+                    return Response(
+                        {'results': '文件读取失败_error(1):' + str(response_data), 'status': False})
+
+    # 自定义重命名文件或者文件夹
+    @action(methods=['post'], detail=False)
+    def file_rename(self, request):
+        serializer = saltstack_serializers.FileManageRenameSerializer(data=request.data)
+        if not serializer.is_valid():
+            response_data = {'results': serializer.errors, 'status': False}
+            return Response(response_data)
+        old_name = serializer.validated_data.get('old_name')
+        new_name = serializer.validated_data.get('new_name')
+        with requests.Session() as s:
+            saltapi = SaltAPI(session=s)
+            response_data = saltapi.file_rename_api(tgt=settings.SITE_SALT_MASTER, arg=[old_name, new_name])
+            # 当调用api失败的时候会返回false
+            if response_data['status'] is False:
+                logger.error(response_data)
+                return Response(response_data)
+            else:
+                try:
+                    response_data = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
+                    if response_data is True:
+                        return Response({'results': '重命名成功', 'status': True})
+                    else:
+                        return Response({'results': '重命名失败，error:%s' % response_data, 'status': False})
+                except Exception as e:
+                    return Response(
+                        {'results': '重命名失败_error(1):' + str(response_data), 'status': False})
+
 
 

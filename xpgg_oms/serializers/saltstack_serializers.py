@@ -204,3 +204,15 @@ class FileManageUpdateSerializer(serializers.Serializer):
     file = serializers.CharField(help_text='更新文件内容')
     file_name = serializers.CharField(max_length=100, help_text='更新文件名')
     file_path = serializers.CharField(max_length=500, help_text='更新文件全路径')
+
+
+# 文件管理 创建文件或者文件夹参数序列化
+class FileManageCreateSerializer(serializers.Serializer):
+    file_path = serializers.CharField(max_length=500, help_text='文件全路径')
+    file_type = serializers.CharField(max_length=10, help_text='文件类型')
+
+
+# 文件管理 重命名文件或者文件夹参数序列化
+class FileManageRenameSerializer(serializers.Serializer):
+    old_name = serializers.CharField(max_length=500, help_text='原文件全路径')
+    new_name = serializers.CharField(max_length=500, help_text='新文件全路径')

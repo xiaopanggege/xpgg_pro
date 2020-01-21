@@ -558,6 +558,36 @@ class SaltAPI(object):
         else:
             return {'results': response_data, 'status': True}
 
+    # 封装file.touch,同命令行touch命令
+    def file_touch_api(self, client='local', tgt='*', tgt_type='glob', fun='file.touch', arg=None):
+        data = {'client': client,
+                'tgt': tgt,
+                'tgt_type': tgt_type,
+                'fun': fun,
+                'arg': arg,
+                }
+        message = 'file_touch_api'
+        response_data = self.public(data, message)
+        if response_data is False:
+            return {'results': 'SaltAPI调用%s请求出错,请检查saltapi接口是否正常' % message, 'status': False}
+        else:
+            return {'results': response_data, 'status': True}
+
+    # 封装file.rename,修改文件或者文件夹名称arg=[src,dst]
+    def file_rename_api(self, client='local', tgt='*', tgt_type='glob', fun='file.rename', arg=None):
+        data = {'client': client,
+                'tgt': tgt,
+                'tgt_type': tgt_type,
+                'fun': fun,
+                'arg': arg,
+                }
+        message = 'file_rename_api'
+        response_data = self.public(data, message)
+        if response_data is False:
+            return {'results': 'SaltAPI调用%s请求出错,请检查saltapi接口是否正常' % message, 'status': False}
+        else:
+            return {'results': response_data, 'status': True}
+
     # 封装file_exists,检查文件是否存在
     def file_exists_api(self, client='local', tgt='*', tgt_type='glob', fun='file.file_exists', arg=None):
         data = {'client': client,
