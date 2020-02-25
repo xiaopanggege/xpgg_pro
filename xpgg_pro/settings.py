@@ -52,7 +52,7 @@ SITE_RSYNC_MINION = '172.16.0.7-master'
 # 在views.py里后面加上当前时间来组成完整的目录路径，千万别出现中文因为py2版salt中文支持不好，出现中文后同步文件时目录可以同步文件不同步过去反而全被删除！！
 SITE_BASE_CO_PATH = '/data/xpgg_co/xpgg'
 # 在用salt同步文件过程中发如果salt的master配置文件中的file_roots定义的svn目录内文件太多会非常的慢
-# 所以使用的软连接的方式同步完删除软连接来保持file_roots目录的整洁，这个目录要在master配置文件中也定义名称为svn指定目录和下面一样。弃用！！
+# 所以使用的软连接的方式同步完删除软连接来保持file_roots目录的整洁，这个目录要在master配置文件中也定义名称为xpgg指定目录和下面一样。弃用！！
 SITE_BASE_CO_SYMLINK_PATH = '/data/xpgg_symlink/'
 # 文件服务使用的临时目录
 SITE_BASE_TMP_PATH = '/data/xpgg_tmp/'
@@ -98,8 +98,8 @@ INSTALLED_APPS = [
     'django_filters',
     'crispy_forms',
     'rest_framework',
-    'corsheaders',
-    'rest_framework_swagger',
+    'corsheaders',  # 跨域白名单设置
+    'drf_yasg',  # swagger
     'django_celery_results',
     'django_celery_beat',
     'django_cleanup.apps.CleanupConfig',  # 清理通过model上传的图片或者文件的旧文件，因为默认不会自动删除旧文件
@@ -227,16 +227,17 @@ SWAGGER_SETTINGS = {
     # 如果需要登录才能够查看接口文档, 登录的链接使用restframework自带的.
     'LOGIN_URL': 'rest_framework:login',
     'LOGOUT_URL': 'rest_framework:logout',
-    # 'DOC_EXPANSION': None,
     # 'SHOW_REQUEST_HEADERS':True,
     # 'USE_SESSION_AUTH': True,
-    # 'DOC_EXPANSION': 'list',
+    'DOC_EXPANSION': 'None',
     # 接口文档中方法列表以首字母升序排列
     'APIS_SORTER': 'alpha',
     # 如果支持json提交, 则接口文档中包含json输入框
     'JSON_EDITOR': True,
-    # 方法列表字母排序
+    # 列表排序 按字母
     'OPERATIONS_SORTER': 'alpha',
+    # 标签排序 按字母
+    'TAGS_SORTER': 'alpha',
     'VALIDATOR_URL': None,
 }
 

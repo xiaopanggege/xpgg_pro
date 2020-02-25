@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework import viewsets
 from rest_framework import mixins
 from rest_framework import filters
+from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
 from xpgg_oms.serializers import menus_serializers
@@ -59,21 +60,33 @@ def create_route(queryset):
     return data_list
 
 
-# 动态菜单栏 路由：查询
-class RoutesModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+# # 动态菜单栏 路由：查询
+# class RoutesModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+#     """
+#     list:
+#         动态菜单路由列表
+#
+#     """
+#     queryset = Routes.objects.filter(parentId=None).order_by('route_id')
+#     # 这里没用到这个
+#     serializer_class = menus_serializers.RolesSerializer
+#     # 默认排序规则
+#     # ordering = ('key',)
+#     # 动态菜单修改量比较大所以自己写所有逻辑
+#
+#     def list(self, request, *args, **kwargs):
+#         queryset = self.filter_queryset(self.get_queryset())
+#         data = create_route(queryset)
+#         return Response(data)
+
+# 动态菜单栏 路由：查询 APIView方式
+class RoutesModel(APIView):
     """
-    list:
-        动态菜单路由列表
+    动态菜单路由列表
 
     """
-    queryset = Routes.objects.filter(parentId=None).order_by('route_id')
-    # serializer_class = menus_serializers.RoutesSerializer
-    # 默认排序规则
-    # ordering = ('key',)
-    # 动态菜单修改量比较大所以自己写所有逻辑
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
+    def get(self, request, format=None):
+        queryset = Routes.objects.filter(parentId=None).order_by('route_id')
         data = create_route(queryset)
         return Response(data)
 
@@ -186,16 +199,28 @@ class RolesModelViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.U
             return Response(response_data)
 
 
-# 动态菜单栏用户角色关联表：查询用户名列表
-class UserListModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+# # 动态菜单栏用户角色关联表：查询用户名列表
+# class UserListModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+#     """
+#     list:
+#         动态菜单 获取用户名列表
+#
+#     """
+#     serializer_class = menus_serializers.RolesSerializer
+#
+#     def list(self, request, *args, **kwargs):
+#         data = MyUser.objects.values('id', 'username')
+#         return Response(data)
+
+
+# 动态菜单栏用户角色关联表：查询用户名列表 APIVIEW方式
+
+class UserList(APIView):
     """
-    list:
-        动态菜单 获取用户名列表
+    获取用户名列表
 
     """
 
-    def list(self, request, *args, **kwargs):
+    def get(self, request, format=None):
         data = MyUser.objects.values('id', 'username')
         return Response(data)
-
-

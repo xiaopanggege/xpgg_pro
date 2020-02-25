@@ -169,10 +169,8 @@ class ClockedListModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         任务调度 获取日期列表
 
     """
-
-    def list(self, request, *args, **kwargs):
-        data = models.ClockedSchedule.objects.values()
-        return Response(data)
+    queryset = models.ClockedSchedule.objects.all()
+    serializer_class = periodic_task_serializers.ClockedScheduleModelSerializer
 
 
 # 获取Crontab列表，任务调度表新增的时候需要显示所有可选Crontab
@@ -196,9 +194,8 @@ class IntervalListModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     """
 
-    def list(self, request, *args, **kwargs):
-        data = models.IntervalSchedule.objects.values()
-        return Response(data)
+    queryset = models.IntervalSchedule.objects.all()
+    serializer_class = periodic_task_serializers.IntervalScheduleModelSerializer
 
 
 # 手动立即执行一次任务

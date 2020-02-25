@@ -216,3 +216,8 @@ class FileManageCreateSerializer(serializers.Serializer):
 class FileManageRenameSerializer(serializers.Serializer):
     old_name = serializers.CharField(max_length=500, help_text='原文件全路径')
     new_name = serializers.CharField(max_length=500, help_text='新文件全路径')
+
+
+# 文件管理 删除文件或者文件夹参数序列化
+class FileManageDeleteSerializer(serializers.Serializer):
+    file_path = serializers.CharField(max_length=500, help_text='文件全路径')

@@ -185,7 +185,7 @@ class ReleaseModelViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixi
                             if response_data is True:
                                 # 删除成功后提交更新，记得把co_status检出状态还原为False,
                                 # 检出目录还是不变，在做发布的时候会重新自动创建出来不用担心
-                                aa = serializer.save(co_status=False)
+                                serializer.save(co_status=False)
                                 if getattr(instance, '_prefetched_objects_cache', None):
                                     # If 'prefetch_related' has been applied to a queryset, we need to
                                     # forcibly invalidate the prefetch cache on the instance.
