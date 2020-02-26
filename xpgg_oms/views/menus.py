@@ -60,25 +60,6 @@ def create_route(queryset):
     return data_list
 
 
-# # 动态菜单栏 路由：查询
-# class RoutesModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-#     """
-#     list:
-#         动态菜单路由列表
-#
-#     """
-#     queryset = Routes.objects.filter(parentId=None).order_by('route_id')
-#     # 这里没用到这个
-#     serializer_class = menus_serializers.RolesSerializer
-#     # 默认排序规则
-#     # ordering = ('key',)
-#     # 动态菜单修改量比较大所以自己写所有逻辑
-#
-#     def list(self, request, *args, **kwargs):
-#         queryset = self.filter_queryset(self.get_queryset())
-#         data = create_route(queryset)
-#         return Response(data)
-
 # 动态菜单栏 路由：查询 APIView方式
 class RoutesModel(APIView):
     """
@@ -199,22 +180,7 @@ class RolesModelViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.U
             return Response(response_data)
 
 
-# # 动态菜单栏用户角色关联表：查询用户名列表
-# class UserListModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-#     """
-#     list:
-#         动态菜单 获取用户名列表
-#
-#     """
-#     serializer_class = menus_serializers.RolesSerializer
-#
-#     def list(self, request, *args, **kwargs):
-#         data = MyUser.objects.values('id', 'username')
-#         return Response(data)
-
-
 # 动态菜单栏用户角色关联表：查询用户名列表 APIVIEW方式
-
 class UserList(APIView):
     """
     获取用户名列表

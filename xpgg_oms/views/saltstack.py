@@ -693,87 +693,16 @@ class SaltToolJobResultViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet)
             return Response({'results': 'salt快捷工具命令执行任务结果查询后台出错_error(3)：' + str(e), 'status': False})
 
 
+# --- 文件管理
 # 文件管理 查树状目录
-class FileTreeModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-    """
-    list:
-        文件管理 查树状目录
-
-    """
-    serializer_class = saltstack_serializers.SaltToolJobResultSerializer
-
-    def list(self, request, *args, **kwargs):
-        # 这里留了一个口，可以传递目录进来查询，不过实际前端并不需要传递，下面直接通过salt获取到目录了
-        base_path = request.query_params.get('base_path')
-        # 获取file_roots的base目录列表，正常是返回{'return': [['/srv/salt']]}
-        if not hasattr(settings, 'SITE_SALT_FILE_ROOTS'):
-            with requests.Session() as s:
-                saltapi = SaltAPI(session=s)
-                response_data = saltapi.saltrun_file_roots_api()
-                # 当调用api失败的时候会返回false
-                if response_data['status'] is False:
-                    logger.error(response_data)
-                    return Response(response_data)
-                else:
-                    try:
-                        # 结果是一个目录的列表
-                        settings.SITE_SALT_FILE_ROOTS = response_data['results']['return'][0]
-                    except Exception as e:
-                        return Response({'results': '文件管理执行文件目录查询失败_error(1):' + str(response_data), 'status': False})
-        file_roots_base = settings.SITE_SALT_FILE_ROOTS
-        if not base_path:
-            base_path = file_roots_base[0]
-        elif base_path.rstrip('/') not in file_roots_base:
-            return Response({'results': '非法目录', 'status': False})
-        with requests.Session() as s:
-            saltapi = SaltAPI(session=s)
-            response_data = saltapi.find_find_api(tgt=settings.SITE_SALT_MASTER, arg=['path=%s' % base_path.rstrip('/'), 'print=path,type,size'])
-            # 当调用api失败的时候会返回false
-            if response_data['status'] is False:
-                logger.error(response_data)
-                return Response(response_data)
-            else:
-                try:
-                    response_path = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
-                except Exception as e:
-                    return Response(
-                        {'results': '文件管理执行文件目录查询失败_error(2):' + str(response_data), 'status': False})
-        # 返回的树状目录列表，下面是按照salt的find命令得到的内容做了处理最终变成一个树状列表，太难了奶奶的搞了好久才想出来
-        b = len(response_path)
-        for i in range(b):
-            path = response_path[i][0]
-            repath = re.sub(r"^%s" % base_path.rstrip('/'), "", path, 1)
-            data = repath.split('/')[1:]
-            response_path[i] = {'label': data[-1] if data else data, 'type': response_path[i][1], 'id': i + 1,
-                                'size': response_path[i][2], 'floor': len(data), 'full_path': path}
-            if response_path[i]['floor'] == 0:
-                response_path[i]['label'] = base_path.rstrip('/')
-            else:
-                floor = response_path[i]['floor'] - 1
-                check = 1
-                count = i
-                while count:
-                    if response_path[i - check]['floor'] == floor:
-                        if response_path[i - check].get('children'):
-                            response_path[i - check]['children'].append(response_path[i])
-                        else:
-                            response_path[i - check]['children'] = [response_path[i]]
-                        count = 0
-                    else:
-                        check += 1
-                        count -= 1
-        # 多返回一个max_id，主要是前端创建文件或者文件夹的时候需要用到id，避免下重复
-        return Response({'results': [response_path[0]], 'max_id': b, 'status': True})
-
-
-# 文件管理 查树状目录 APIView方式
-class FileTreeModel(APIView):
+class FileTreeViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     """
     文件管理 查树状目录
 
     """
+    serializer_class = saltstack_serializers.FileeManageTreeSerializer
 
-    def get(self, request, format=None):
+    def create(self, request, *args, **kwargs):
         # 这里留了一个口，可以传递目录进来查询，不过实际前端并不需要传递，下面直接通过salt获取到目录了
         base_path = request.query_params.get('base_path')
         # 获取file_roots的base目录列表，正常是返回{'return': [['/srv/salt']]}
@@ -837,28 +766,17 @@ class FileTreeModel(APIView):
         return Response({'results': [response_path[0]], 'max_id': b, 'status': True})
 
 
-# 文件管理 文件内容增删改查
-class FileManageModelViewSet(viewsets.GenericViewSet):
+# 文件管理 文件内容查看
+class FileContentViewSet(viewsets.GenericViewSet):
     """
-    file_content:
-        文件管理 文件内容查看
-    file_update:
-        文件管理 文件更新
-    file_create:
-        创建文件或者文件夹
-    file_rename:
-        重命名文件或者文件夹
-    file_delete:
-        删除文件或者文件夹
-
+    文件管理 文件内容查看
     """
 
     serializer_class = saltstack_serializers.FileManageContentSerializer
 
     # 自定义查看文件内容方法
-    @action(methods=['post'], detail=False)
-    def file_content(self, request):
-        serializer = saltstack_serializers.FileManageContentSerializer(data=request.data)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
             response_data = {'results': serializer.errors, 'status': False}
             return Response(response_data)
@@ -887,10 +805,19 @@ class FileManageModelViewSet(viewsets.GenericViewSet):
                         {'results': '文件读取失败_error(1):' + str(response_data), 'status': False})
         return Response({'results': file_content, 'status': True})
 
+
+# 文件管理 文件内容更新
+class FileUpdateViewSet(viewsets.GenericViewSet):
+    """
+    文件内容更新
+
+    """
+
+    serializer_class = saltstack_serializers.FileManageUpdateSerializer
+
     # 自定义更新文件方法
-    @action(methods=['post'], detail=False)
-    def file_update(self, request):
-        serializer = saltstack_serializers.FileManageUpdateSerializer(data=request.data)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
             response_data = {'results': serializer.errors, 'status': False}
             return Response(response_data)
@@ -955,10 +882,19 @@ class FileManageModelViewSet(viewsets.GenericViewSet):
             return Response({'results': '更新文件失败_error(2):' + str(e), 'status': False})
         return Response({'results': '更新成功', 'status': True})
 
+
+# 文件管理 创建文件或者文件夹
+class FileCreateViewSet(viewsets.GenericViewSet):
+    """
+    创建文件或者文件夹
+
+    """
+
+    serializer_class = saltstack_serializers.FileManageCreateSerializer
+
     # 自定义创建文件或者文件夹
-    @action(methods=['post'], detail=False)
-    def file_create(self, request):
-        serializer = saltstack_serializers.FileManageCreateSerializer(data=request.data)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
             response_data = {'results': serializer.errors, 'status': False}
             return Response(response_data)
@@ -985,10 +921,19 @@ class FileManageModelViewSet(viewsets.GenericViewSet):
                     return Response(
                         {'results': '文件读取失败_error(1):' + str(response_data), 'status': False})
 
+
+# 文件管理 重命名文件或者文件夹
+class FileRenameViewSet(viewsets.GenericViewSet):
+    """
+    重命名文件或者文件夹
+
+    """
+
+    serializer_class = saltstack_serializers.FileManageRenameSerializer
+
     # 自定义重命名文件或者文件夹
-    @action(methods=['post'], detail=False)
-    def file_rename(self, request):
-        serializer = saltstack_serializers.FileManageRenameSerializer(data=request.data)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
             response_data = {'results': serializer.errors, 'status': False}
             return Response(response_data)
@@ -1012,46 +957,11 @@ class FileManageModelViewSet(viewsets.GenericViewSet):
                     return Response(
                         {'results': '重命名失败_error(1):' + str(response_data), 'status': False})
 
-    # 自定义删除文件或者文件夹
-    @action(methods=['post'], detail=False)
-    def file_delete(self, request):
-        serializer = saltstack_serializers.FileManageDeleteSerializer(data=request.data)
-        if not serializer.is_valid():
-            response_data = {'results': serializer.errors, 'status': False}
-            return Response(response_data)
-        file_path = serializer.validated_data.get('file_path')
-        with requests.Session() as s:
-            saltapi = SaltAPI(session=s)
-            response_data = saltapi.file_remove_api(tgt=settings.SITE_SALT_MASTER, arg=[file_path])
-            # 当调用api失败的时候会返回false
-            if response_data['status'] is False:
-                logger.error(response_data)
-                return Response(response_data)
-            else:
-                try:
-                    response_data = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
-                    if response_data is True:
-                        return Response({'results': '删除成功', 'status': True})
-                    else:
-                        return Response({'results': '删除失败，error:%s' % response_data, 'status': False})
-                except Exception as e:
-                    return Response(
-                        {'results': '删除失败_error(1):' + str(response_data), 'status': False})
 
-
-# 文件管理 文件内容查
+# 文件管理 删除文件或者文件夹
 class FileDeleteViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     """
-    file_content:
-        文件管理 文件内容查看
-    file_update:
-        文件管理 文件更新
-    file_create:
-        创建文件或者文件夹
-    file_rename:
-        重命名文件或者文件夹
-    file_delete:
-        删除文件或者文件夹
+    删除文件或者文件夹
 
     """
 
@@ -1059,7 +969,7 @@ class FileDeleteViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
     # 删除文件
     def create(self, request, *args, **kwargs):
-        serializer = saltstack_serializers.FileManageDeleteSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
             response_data = {'results': serializer.errors, 'status': False}
             return Response(response_data)

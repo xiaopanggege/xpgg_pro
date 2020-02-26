@@ -192,6 +192,11 @@ class SaltToolJobResultSerializer(serializers.Serializer):
         return value
 
 
+# 文件管理 获取文件树结构
+class FileeManageTreeSerializer(serializers.Serializer):
+    base_path = serializers.CharField(required=False, max_length=500, help_text='salt-master的file_roots路径')
+
+
 # 文件管理 获取文件内容参数序列化
 class FileManageContentSerializer(serializers.Serializer):
     file_size = serializers.CharField(max_length=100, help_text='文件大小')

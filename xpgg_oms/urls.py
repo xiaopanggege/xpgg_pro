@@ -39,8 +39,12 @@ router.register(r'saltstack/salt-cmd-opt/get-cmd', saltstack.SaltCmdCmdleListVie
 router.register(r'saltstack/salt-exe', saltstack.SaltExeViewSet, basename='salt-exe')
 router.register(r'saltstack/salt-tool/job-search/status', saltstack.SaltToolJobStatusViewSet, basename='salt-tool-job-search-status')
 router.register(r'saltstack/salt-tool/job-search/result', saltstack.SaltToolJobResultViewSet, basename='salt-tool-job-search-result')
-router.register(r'saltstack/file-manage', saltstack.FileManageModelViewSet, basename='salt-file-manage')
-router.register(r'saltstack/file-delete', saltstack.FileDeleteViewSet, basename='salt-file-delete')
+router.register(r'saltstack/file-manage/file-tree', saltstack.FileTreeViewSet, basename='salt-file-tree')
+router.register(r'saltstack/file-manage/file-content', saltstack.FileContentViewSet, basename='salt-file-content')
+router.register(r'saltstack/file-manage/file-update', saltstack.FileUpdateViewSet, basename='salt-file-update')
+router.register(r'saltstack/file-manage/file-create', saltstack.FileCreateViewSet, basename='salt-file-create')
+router.register(r'saltstack/file-manage/file-rename', saltstack.FileRenameViewSet, basename='salt-file-rename')
+router.register(r'saltstack/file-manage/file-delete', saltstack.FileDeleteViewSet, basename='salt-file-delete')
 router.register(r'release/release-base', release.ReleaseModelViewSet, basename='release-base')
 router.register(r'release/release-opt', release.ReleaseOperationViewSet, basename='release-opt')
 router.register(r'release/release-del', release.ReleaseDeleteViewSet, basename='release-del')
@@ -76,7 +80,6 @@ urlpatterns = [
     #  APIView的路由表
     url(r'^users/$', menus.UserList.as_view()),
     url(r'^routes/$', menus.RoutesModel.as_view()),
-    url(r'^saltstack/file-tree/$', saltstack.FileTreeModel.as_view()),
 ]
 
 
