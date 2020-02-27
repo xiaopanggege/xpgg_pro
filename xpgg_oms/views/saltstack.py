@@ -9,6 +9,7 @@ from rest_framework import status
 from rest_framework import viewsets
 from rest_framework import mixins
 from rest_framework import filters
+from rest_framework.parsers import MultiPartParser
 from rest_framework.decorators import action
 from django.conf import settings
 from django_filters.rest_framework import DjangoFilterBackend
@@ -823,13 +824,15 @@ class FileUpdateViewSet(viewsets.GenericViewSet):
             return Response(response_data)
         file = serializer.validated_data.get('file')
         file_name = serializer.validated_data.get('file_name')
+        # file_path是包含文件名的全路径
         file_path = serializer.validated_data.get('file_path')
         file_name = file_name + '_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         tmp_path = os.path.join(settings.SITE_BASE_TMP_PATH,  '%s' % file_name)
         try:
             with requests.Session() as s:
                 saltapi = SaltAPI(session=s)
-                # 如果master和rsync服务器和web服务器是同一台则直接保存到对应的文件位置即可
+                # 如果master和rsync服务器和web服务器是同一台则直接保存到对应的文件位置即可,其实只要master和web同台即可不过为了后面判断
+                # 所以直接先判断3个都同台
                 if settings.SITE_WEB_MINION == settings.SITE_RSYNC_MINION == settings.SITE_SALT_MASTER:
                     try:
                         with open('%s' % file_path, 'w') as f:
@@ -847,13 +850,13 @@ class FileUpdateViewSet(viewsets.GenericViewSet):
                         with open('%s' % tmp_path, 'w') as f:
                             f.write(file)
                     # rsync服务器和web服务器是同一台则先存入rsync的daemon指定的目录中即tmp_path里然后同步到master
+                    # 注意tmp_path是通过settings.SITE_BASE_TMP_PATH生成的settings.SITE_BASE_TMP_PATH要在rsync的daemon中存在
                     if settings.SITE_WEB_MINION == settings.SITE_RSYNC_MINION:
                         # 下面有一个xpgg_tmp是rsync定义的文件源，记得要和rsync服务端daemo里一致
                         response_data = saltapi.rsync_rsync_api(tgt=settings.SITE_SALT_MASTER, arg=[
                             'src=rsync://{ip}:{port}/xpgg_tmp/{file_name}'.format(ip=settings.SITE_RSYNC_IP,
                                                                                   port=settings.SITE_RSYNC_PORT,
-                                                                                  file_name=file_name,
-                                                                                  file_path=file_path),
+                                                                                  file_name=file_name),
                             'dst={file_path}'.format(file_path=file_path)])
                     # 如果rsync服务和web服务器和master服务器3个都是独立的，则web服务器也需要开启rsync的daemon，然后把文件先存入web服务器的
                     # rsync对应目录中，master从web服务器去拉取这个文件即可
@@ -862,12 +865,12 @@ class FileUpdateViewSet(viewsets.GenericViewSet):
                         response_data = saltapi.rsync_rsync_api(tgt=settings.SITE_SALT_MASTER, arg=[
                             'src=rsync://{ip}:{port}/xpgg_tmp/{file_name}'.format(ip=settings.SITE_WEB_RSYNC_IP,
                                                                                   port=settings.SITE_WEB_RSYNC_PORT,
-                                                                                  file_name=file_name,
-                                                                                  file_path=file_path),
+                                                                                  file_name=file_name),
                             'dst={file_path}'.format(file_path=file_path)])
-                    # 当调用api失败的时候会返回false
+                    # 当调用api失败的时候会返回false，并删除临时文件
                     if response_data['status'] is False:
                         logger.error(response_data)
+                        os.remove(tmp_path)
                         return Response(response_data)
                     else:
                         try:
@@ -991,3 +994,89 @@ class FileDeleteViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                 except Exception as e:
                     return Response(
                         {'results': '删除失败_error(1):' + str(response_data), 'status': False})
+
+
+# 文件管理 上传文件
+class FileUploadViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
+    """
+    上传文件
+
+    """
+    # 指定解释器是MultiPartParser可以解释上传多文件，单个可以用FileUploadParser
+    parser_classes = [MultiPartParser]
+    serializer_class = saltstack_serializers.FileManageUploadSerializer
+
+    # 上传文件
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            response_data = {'results': serializer.errors, 'status': False}
+            return Response(response_data)
+        # 上传参考官网的FileUploadParser
+        # 如果是多文件则使用request.FILES.getlist('file', None),然后通过for来提取单个文件
+        # 并且文件字段不能序列化，因为序列化FileField只能接受一个文件
+        file = request.data.get('file')
+        file_name = serializer.validated_data.get('file_name')
+        # file_path是包含文件名的目的文件全路径
+        file_path = serializer.validated_data.get('file_path')
+        file_name = file_name + '_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+        tmp_path = os.path.join(settings.SITE_BASE_TMP_PATH,  '%s' % file_name)
+        try:
+            with requests.Session() as s:
+                saltapi = SaltAPI(session=s)
+                # 如果master和rsync服务器和web服务器是同一台则直接保存到对应的文件位置即可
+                if settings.SITE_WEB_MINION == settings.SITE_RSYNC_MINION == settings.SITE_SALT_MASTER:
+                    try:
+                        with open('%s' % file_path, 'wb') as f:
+                            # django读写文件流的方式，避免写入内存导致溢出
+                            for chunk in file.chunks():
+                                f.write(chunk)
+                    except FileNotFoundError:
+                        os.makedirs(os.path.dirname(file_path))
+                        with open('%s' % file_path, 'wb') as f:
+                            for chunk in file.chunks():
+                                f.write(chunk)
+                else:
+                    try:
+                        with open('%s' % tmp_path, 'wb') as f:
+                            for chunk in file.chunks():
+                                f.write(chunk)
+                    except FileNotFoundError:
+                        os.makedirs(settings.SITE_BASE_TMP_PATH)
+                        with open('%s' % tmp_path, 'wb') as f:
+                            for chunk in file.chunks():
+                                f.write(chunk)
+                    # rsync服务器和web服务器是同一台则先存入rsync的daemon指定的目录中即tmp_path里然后同步到master
+                    if settings.SITE_WEB_MINION == settings.SITE_RSYNC_MINION:
+                        # 下面有一个xpgg_tmp是rsync定义的文件源，记得要和rsync服务端daemo里一致
+                        response_data = saltapi.rsync_rsync_api(tgt=settings.SITE_SALT_MASTER, arg=[
+                            'src=rsync://{ip}:{port}/xpgg_tmp/{file_name}'.format(ip=settings.SITE_RSYNC_IP,
+                                                                                  port=settings.SITE_RSYNC_PORT,
+                                                                                  file_name=file_name),
+                            'dst={file_path}'.format(file_path=file_path)])
+                    # 如果rsync服务和web服务器和master服务器3个都是独立的，则web服务器也需要开启rsync的daemon，然后把文件先存入web服务器的
+                    # rsync对应目录中，master从web服务器去拉取这个文件即可
+                    else:
+                        # 下面有一个xpgg_tmp是rsync定义的文件源，记得要和rsync服务端daemo里一致
+                        response_data = saltapi.rsync_rsync_api(tgt=settings.SITE_SALT_MASTER, arg=[
+                            'src=rsync://{ip}:{port}/xpgg_tmp/{file_name}'.format(ip=settings.SITE_WEB_RSYNC_IP,
+                                                                                  port=settings.SITE_WEB_RSYNC_PORT,
+                                                                                  file_name=file_name),
+                            'dst={file_path}'.format(file_path=file_path)])
+                    # 当调用api失败的时候会返回false，并删除临时文件
+                    if response_data['status'] is False:
+                        logger.error(response_data)
+                        os.remove(tmp_path)
+                        return Response(response_data)
+                    else:
+                        try:
+                            data = response_data['results']['return'][0][settings.SITE_SALT_MASTER]
+                            if data.get('retcode') != 0:
+                                return Response({'results': '上传文件在同步时失败_error(0):' + str(data['stderr']), 'status': False})
+                        except Exception as e:
+                            return Response({'results': '上传文件在同步时失败_error(1):' + str(e), 'status': False})
+                        finally:
+                            os.remove(tmp_path)
+        except Exception as e:
+            return Response({'results': '上传文件失败_error(2):' + str(e), 'status': False})
+        return Response({'results': '上传成功', 'status': True})

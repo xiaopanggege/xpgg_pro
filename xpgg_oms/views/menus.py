@@ -113,16 +113,19 @@ def create_route_role(queryset, role):
 class RolesModelViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.UpdateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet):
     """
     list:
-        动态菜单角色列表
+    动态菜单角色列表
 
     create:
-        创建角色
+    创建角色
 
-    update：
-        更新角色
+    update:
+    更新当前id角色
+
+    partial_update:
+    更新当前id角色部分记录
 
     destroy:
-        删除角色
+    删除角色
 
     """
     queryset = Roles.objects.all()

@@ -19,7 +19,24 @@ logger = logging.getLogger('xpgg_oms.views')
 
 class MyUserViewSet(viewsets.ModelViewSet):
     """
+    list:
+    用户列表
+
+    retrieve:
     用户详细信息，后台获取{id}随意填
+
+    create:
+    创建用户
+
+    update:
+    更新当前id用户
+
+    partial_update:
+    更新当前id用户部分记录
+
+    delete:
+    删除用户
+
     """
     queryset = MyUser.objects.all()
     # 指定查询字段默认是pk

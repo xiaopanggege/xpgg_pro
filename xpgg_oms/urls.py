@@ -7,6 +7,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from rest_framework.urlpatterns import format_suffix_patterns
+from rest_framework.documentation import include_docs_urls
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
@@ -45,6 +46,7 @@ router.register(r'saltstack/file-manage/file-update', saltstack.FileUpdateViewSe
 router.register(r'saltstack/file-manage/file-create', saltstack.FileCreateViewSet, basename='salt-file-create')
 router.register(r'saltstack/file-manage/file-rename', saltstack.FileRenameViewSet, basename='salt-file-rename')
 router.register(r'saltstack/file-manage/file-delete', saltstack.FileDeleteViewSet, basename='salt-file-delete')
+router.register(r'saltstack/file-manage/file-upload', saltstack.FileUploadViewSet, basename='salt-file-upload')
 router.register(r'release/release-base', release.ReleaseModelViewSet, basename='release-base')
 router.register(r'release/release-opt', release.ReleaseOperationViewSet, basename='release-opt')
 router.register(r'release/release-del', release.ReleaseDeleteViewSet, basename='release-del')

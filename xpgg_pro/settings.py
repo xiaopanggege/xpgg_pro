@@ -11,9 +11,7 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
-import pymysql
 from datetime import timedelta
-pymysql.install_as_MySQLdb()
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -52,7 +50,7 @@ SITE_RSYNC_MINION = '172.16.0.7-master'
 # 在views.py里后面加上当前时间来组成完整的目录路径，千万别出现中文因为py2版salt中文支持不好，出现中文后同步文件时目录可以同步文件不同步过去反而全被删除！！
 SITE_BASE_CO_PATH = '/data/xpgg_co/xpgg'
 # 在用salt同步文件过程中发如果salt的master配置文件中的file_roots定义的svn目录内文件太多会非常的慢
-# 所以使用的软连接的方式同步完删除软连接来保持file_roots目录的整洁，这个目录要在master配置文件中也定义名称为xpgg指定目录和下面一样。弃用！！
+# 所以使用的软连接的方式同步完删除软连接来保持file_roots目录的整洁，这个目录要在master配置文件中也定义名称为xpgg指定目录和下面一样。不推荐！！
 SITE_BASE_CO_SYMLINK_PATH = '/data/xpgg_symlink/'
 # 文件服务使用的临时目录
 SITE_BASE_TMP_PATH = '/data/xpgg_tmp/'
@@ -148,7 +146,7 @@ DATABASES = {
         'NAME': 'xpgg_pro',    # 你的数据库名称
         'USER': 'xiaopgg',   # 你的数据库用户名
         'PASSWORD': '123456',  # 你的数据库密码
-        'HOST': '',  # 你的数据库主机，留空默认为localhost
+        'HOST': '127.0.0.1',  # 你的数据库主机，留空默认为localhost
         'PORT': '3306',  # 你的数据库端口,
 
         'OPTIONS': {

@@ -488,9 +488,9 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                     return Response(result)
                     elif operation == '同步文件':
                         sync_file_method = operation_arguments.get('sync_file_method', 'salt')
-                        # 2020年正式弃用salt自带的同步，只使用rsync，另外由于代码检出目录从master移到rsync服务端所以也无法使用salt的同步了
-                        # 除非rsync服务端和master在同一台上面,并且master配置文件的file_roots添加xpgg兵指定目录是下面软连接的目录，然后
-                        # sls脚本里面saltenv也要配置一直为xpgg
+                        # 尽量不用salt同步方式，只使用rsync，由于代码检出目录从master移到rsync服务端所以也无法使用salt的同步了
+                        # 除非rsync服务端和master在同一台上面,并且master配置文件的file_roots添加xpgg并指定目录是settings.SITE_BASE_CO_SYMLINK_PATH
+                        # 的目录，然后sls脚本里面saltenv也要配置一直为xpgg
                         if sync_file_method == 'salt':
                             if settings.SITE_SALT_MASTER != settings.SITE_RSYNC_MINION:
                                 app_log.append(
