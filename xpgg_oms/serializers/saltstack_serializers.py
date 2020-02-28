@@ -230,6 +230,5 @@ class FileManageDeleteSerializer(serializers.Serializer):
 
 # 文件管理 上传文件参数序列化
 class FileManageUploadSerializer(serializers.Serializer):
-    file_path = serializers.CharField(max_length=500, help_text='文件全路径')
-    file_name = serializers.CharField(max_length=100, help_text='文件名')
+    file_path = serializers.CharField(max_length=500, help_text='文件路径(不包含文件名)')
     file = serializers.FileField(max_length=100, help_text='文件')

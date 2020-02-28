@@ -9,7 +9,7 @@ from rest_framework import status
 from rest_framework import viewsets
 from rest_framework import mixins
 from rest_framework import filters
-from rest_framework.parsers import MultiPartParser
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.decorators import action
 from django.conf import settings
 from django_filters.rest_framework import DjangoFilterBackend
@@ -706,7 +706,7 @@ class FileTreeViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     def create(self, request, *args, **kwargs):
         # 这里留了一个口，可以传递目录进来查询，不过实际前端并不需要传递，下面直接通过salt获取到目录了
         base_path = request.query_params.get('base_path')
-        # 获取file_roots的base目录列表，正常是返回{'return': [['/srv/salt']]}
+        # 获取file_roots的base目录列表，正常是返回{'return': [['/srv/salt', 'xxxxxx']]}
         if not hasattr(settings, 'SITE_SALT_FILE_ROOTS'):
             with requests.Session() as s:
                 saltapi = SaltAPI(session=s)
@@ -743,7 +743,9 @@ class FileTreeViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         b = len(response_path)
         for i in range(b):
             path = response_path[i][0]
+            # 把路径/srv/salt部分替换为空
             repath = re.sub(r"^%s" % base_path.rstrip('/'), "", path, 1)
+            # 分割剩下的路径
             data = repath.split('/')[1:]
             response_path[i] = {'label': data[-1] if data else data, 'type': response_path[i][1], 'id': i + 1,
                                 'size': response_path[i][2], 'floor': len(data), 'full_path': path}
@@ -754,7 +756,13 @@ class FileTreeViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                 check = 1
                 count = i
                 while count:
-                    if response_path[i - check]['floor'] == floor:
+                    # 获取前一个的层数floor
+                    before_floor = response_path[i - check]['floor']
+                    # 获取前一个的最后一个路径
+                    before_path = (response_path[i - check]['full_path']).split('/')[-1]
+                    # 如果这个路径的层数和floor的一样其实就是比现在上一层哈，并且路径也要一样的就匹配，不然继续往上,
+                    # 注意floor等0不需要判断路径了因为等0下面的data[-2]根本没有会报错
+                    if before_floor == floor == 0 or (before_floor == floor and data[-2] == before_path):
                         if response_path[i - check].get('children'):
                             response_path[i - check]['children'].append(response_path[i])
                         else:
@@ -1002,8 +1010,8 @@ class FileUploadViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     上传文件
 
     """
-    # 指定解释器是MultiPartParser可以解释上传多文件，单个可以用FileUploadParser
-    parser_classes = [MultiPartParser]
+    # 指定解释器是MultiPartParser可以解释上传多文件，单个可以用FileUploadParser,FormParser是解析表单使用，同常都是如下同事使用
+    parser_classes = [FormParser, MultiPartParser]
     serializer_class = saltstack_serializers.FileManageUploadSerializer
 
     # 上传文件
@@ -1016,9 +1024,10 @@ class FileUploadViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         # 如果是多文件则使用request.FILES.getlist('file', None),然后通过for来提取单个文件
         # 并且文件字段不能序列化，因为序列化FileField只能接受一个文件
         file = request.data.get('file')
-        file_name = serializer.validated_data.get('file_name')
-        # file_path是包含文件名的目的文件全路径
+        file_name = file.name
+        # file_path是不包含文件名的目的文件路径，所以要拼接
         file_path = serializer.validated_data.get('file_path')
+        file_path = os.path.join(file_path,  '%s' % file_name)
         file_name = file_name + '_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         tmp_path = os.path.join(settings.SITE_BASE_TMP_PATH,  '%s' % file_name)
         try:
