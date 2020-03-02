@@ -60,6 +60,8 @@ SITE_RSYNC_PORT = '873'
 # web服务器rsync的内网ip和端口,如果rsync服务器和web服务器不是同一台，则web服务器也需要开启rsync的daemon用来给文件服务的上传更新使用
 SITE_WEB_RSYNC_IP = '172.16.0.7'
 SITE_WEB_RSYNC_PORT = '873'
+# 限制上传更新等文件最大值
+SITE_MAX_FILE_SIZE = 5242880
 
 
 # celery调用参数设置

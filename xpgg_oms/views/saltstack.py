@@ -772,7 +772,7 @@ class FileTreeViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                         check += 1
                         count -= 1
         # 多返回一个max_id，主要是前端创建文件或者文件夹的时候需要用到id，避免下重复
-        return Response({'results': [response_path[0]], 'max_id': b, 'status': True})
+        return Response({'results': [response_path[0]], 'max_id': b, 'max_size': settings.SITE_MAX_FILE_SIZE, 'status': True})
 
 
 # 文件管理 文件内容查看
@@ -792,8 +792,8 @@ class FileContentViewSet(viewsets.GenericViewSet):
         file_path = serializer.validated_data.get('file_path')
         file_size = serializer.validated_data.get('file_size')
         file_type = serializer.validated_data.get('file_type')
-        # 返回的是btyes换算成兆M就是下面,大于5M限制打开,如果后期频繁修改建议入库弄个表记录大小,然后弄个页面调整打开大小
-        if str(file_size).isdigit() and int(str(file_size)) > 5242880:
+        # 返回的是5242880 btyes换算成兆5M,大于5M限制打开,如果后期频繁修改建议入库弄个表记录大小,然后弄个页面调整打开大小
+        if str(file_size).isdigit() and int(str(file_size)) > settings.SITE_MAX_FILE_SIZE:
             return Response(
                 {'results': '文件超过5M太大无法打开，需调整上限请联系管理员', 'status': False})
         elif file_type != 'f':
@@ -1025,6 +1025,8 @@ class FileUploadViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         # 并且文件字段不能序列化，因为序列化FileField只能接受一个文件
         file = request.data.get('file')
         file_name = file.name
+        if file.size > settings.SITE_MAX_FILE_SIZE:
+            return Response({'results': '上传文件失败: 文件大于5M，如需帮助请联系管理员', 'status': False})
         # file_path是不包含文件名的目的文件路径，所以要拼接
         file_path = serializer.validated_data.get('file_path')
         file_path = os.path.join(file_path,  '%s' % file_name)
