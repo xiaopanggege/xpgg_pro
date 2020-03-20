@@ -110,7 +110,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    # 'django.middleware.csrf.CsrfViewMiddleware',  # csrf请求post的时候会报错，测试暂时先关闭
+    # 'django.middleware.csrf.CsrfViewMiddleware',  # csrf请求post的时候会报错，前后端分离用上面corsheaders代替这个
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
