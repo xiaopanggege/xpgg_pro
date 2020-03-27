@@ -258,8 +258,8 @@ class TaskResultScheduleModelViewSet(viewsets.ModelViewSet):
     search_fields = ('task_name',)
     # 可选的排序规则
     ordering_fields = ('id', 'task_name')
-    # 默认排序规则
-    ordering = ('id',)
+    # 默认排序规则,这个要倒叙看结果
+    ordering = ('-id',)
 
     # 自定义批量删除方法，action装饰器使得multiple_delete方法可以接受delete操作，detail=False是url不需要传pk
     @action(methods=['delete'], detail=False)
