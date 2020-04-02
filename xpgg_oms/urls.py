@@ -1,7 +1,7 @@
 from django.urls import path, re_path, include
 from django.conf.urls import url
 from rest_framework.routers import DefaultRouter
-from xpgg_oms.views import user, saltstack, release, menus, periodic_task
+from xpgg_oms.views import user, saltstack, release, menus, periodic_task, dashboard
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -24,6 +24,7 @@ schema_view = get_schema_view(
 
 router = DefaultRouter()
 # 通过router注册方式配置路由，快准狠,新版base_name改为basename好像
+router.register(r'dashboard', dashboard.DashboardViewSet, basename='dashboard')
 router.register(r'userinfo', user.MyUserViewSet, basename='userinfo')
 router.register(r'saltstack/salt-key', saltstack.SaltKeyViewSet, basename='salt-key')
 router.register(r'saltstack/salt-key-opt/accept', saltstack.SaltKeyAcceptViewSet, basename='salt-key-accept')
