@@ -7,6 +7,7 @@ from django.db.models import Count
 from xpgg_oms.models import AppReleaseLog, SaltKeyList, MinionList
 from django_celery_results.models import TaskResult
 import datetime
+import psutil
 
 import logging
 logger = logging.getLogger('xpgg_oms.views')
@@ -43,6 +44,17 @@ class DashboardViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             response_data['results']['release_log_count'] = AppReleaseLog.objects.filter(
                 create_time__gte=date_time).annotate(month=ExtractMonth('create_time')).values('month').order_by(
                 'month').annotate(count=Count('id'))
+            # 本机性能监控
+            sys_status = []
+            cpu_use = str(100 - int(psutil.cpu_times_percent(interval=1, percpu=False).idle)) + '%'
+            mem_use = str(psutil.virtual_memory().used//1024//1024) + '/' + str(psutil.virtual_memory().total//1024//1024) + 'M'
+            sys_status.append({'name': 'CPU使用率', 'value': cpu_use})
+            sys_status.append({'name': '内存使用率', 'value': mem_use})
+            disk = psutil.disk_partitions()
+            for i in disk:
+                disk_use = psutil.disk_usage(i.mountpoint)
+                sys_status.append({'name': '磁盘 %s 使用率' % i.device, 'value': '%.1f%%' % disk_use.percent})
+            response_data['results']['sys_status'] = sys_status
         else:
             response_data = {'results': serializer.errors, 'status': False}
         return Response(response_data)

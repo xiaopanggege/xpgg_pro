@@ -117,7 +117,8 @@ class SaltKeyViewSet(SaltKeyUtils, mixins.CreateModelMixin, mixins.RetrieveModel
     def create(self, request, *args, **kwargs):
         # 全局刷新key列表
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response({'results': serializer.errors, 'status': False})
         if tasks.saltkey_list():
             return Response({'results': '刷新成功', 'status': True})
         else:
@@ -139,7 +140,8 @@ class SaltKeyAcceptViewSet(SaltKeyUtils, mixins.CreateModelMixin, viewsets.Gener
     def create(self, request, *args, **kwargs):
         # 接受key操作
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response({'results': serializer.errors, 'status': False})
         minions = request.data.get('minion_id')
         response_data = self.salt_key_action(minions, 'saltkey_accept_api', '接受认证key')
         return Response(response_data)
@@ -160,7 +162,8 @@ class SaltKeyDeleteViewSet(SaltKeyUtils, mixins.CreateModelMixin, viewsets.Gener
     def create(self, request, *args, **kwargs):
         # 删除key操作
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response({'results': serializer.errors, 'status': False})
         minions = request.data.get('minion_id')
         response_data = self.salt_key_action(minions, 'saltkey_delete_api', '删除key')
         return Response(response_data)
@@ -181,7 +184,8 @@ class SaltKeyRejectViewSet(SaltKeyUtils, mixins.CreateModelMixin, viewsets.Gener
     def create(self, request, *args, **kwargs):
         # 拒绝key操作
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response({'results': serializer.errors, 'status': False})
         minions = request.data.get('minion_id')
         response_data = self.salt_key_action(minions, 'saltkey_reject_api', '拒绝key')
         return Response(response_data)
@@ -202,7 +206,8 @@ class SaltKeyDeleteDeniedViewSet(mixins.CreateModelMixin, viewsets.GenericViewSe
     def create(self, request, *args, **kwargs):
         # 删除denied里的key操作
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response({'results': serializer.errors, 'status': False})
         minions = request.data.get('minion_id')
         # 删除denied里的key比较特殊无法通过saltkey_delete_api来删除因为denied的产生是在已接受key中已经存在了同名的minion_id，然后原来
         # 应该存在于未认证列表中的key就会被salt存放到denied里，而通过salt-key -d删除key会把已接受的key一起删除，官方没有提出解决办法，所以
@@ -241,7 +246,6 @@ class SaltMinionViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixi
     create:
         更新列表
             salt_minion_tag值为global_update_salt_minion_list
-            minion_id值为"minion_id1,minion_id2...." or "*"
 
     """
     queryset = MinionList.objects.all()
@@ -276,7 +280,8 @@ class SaltMinionViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixi
     def create(self, request, *args, **kwargs):
         # 更新minion列表
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response({'results': serializer.errors, 'status': False})
         if tasks.minion_list():
             return Response({'results': '更新成功', 'status': True})
         else:
@@ -297,7 +302,8 @@ class SaltMinionStateUpdateViewSet(mixins.CreateModelMixin, viewsets.GenericView
     def create(self, request, *args, **kwargs):
         # 更新minion状态
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response({'results': serializer.errors, 'status': False})
         minion_list = MinionList.objects.values_list('minion_id', flat=True)
         id_list = []
         with requests.Session() as s:
@@ -341,7 +347,8 @@ class SaltMinionUpdateViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     def create(self, request, *args, **kwargs):
         # 单minion更新
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response({'results': serializer.errors, 'status': False})
         minion_id = request.data.get('minion_id')
         with requests.Session() as s:
             saltapi = SaltAPI(session=s)

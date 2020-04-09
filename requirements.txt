@@ -27,6 +27,7 @@ mysqlclient==1.4.6
 openapi-codec==1.3.2
 packaging==20.1
 Pillow==7.0.0
+psutil==5.7.0
 PyJWT==1.7.1
 pyparsing==2.4.6
 python-crontab==2.3.8

@@ -28,6 +28,7 @@ def add(self, x, y):
 
 @shared_task(bind=True, name='命令')
 def cmd(self, periodic_name='未命名', tgt='*', tgt_type='glob', execute_cmd=''):
+    # periodic_name参数是为了给signals.py里结果入库之前修改task_name使得生成的结果task_name个性化使用的
     if tgt_type == 'list':
         tgt = [tgt]
     with requests.Session() as s:
@@ -43,7 +44,9 @@ def cmd(self, periodic_name='未命名', tgt='*', tgt_type='glob', execute_cmd='
             return response_data
 
 
-def saltkey_list():
+# 这个方法还直接提供给SaltKeyViewSet对象调用
+@shared_task(bind=True, name='saltkey状态检测入库')
+def saltkey_list(self):
     salt_list = SaltKeyList.objects.values_list('minion_id', 'certification_status')
     minion_list = []
     with requests.Session() as s:
@@ -92,7 +95,9 @@ def saltkey_list():
             return False
 
 
-def minion_list():
+# 这个方法还直接提供给SaltMinionViewSet对象调用
+@shared_task(bind=True, name='minion状态检测入库')
+def minion_list(self):
     # 用values_list配合flat=True得到minion_id的列表，用values_list获取的不是列表是QuerySet对象
     # 如果要执行append或者remove等list操作无法执行
     minion_list = MinionList.objects.values_list('minion_id', flat=True)
