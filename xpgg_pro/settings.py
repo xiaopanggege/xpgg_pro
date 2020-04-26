@@ -12,9 +12,13 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 
 import os
 from datetime import timedelta
+import configparser
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# 读取配置文件
+conf = configparser.ConfigParser()
+conf.read(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'xpgg_conf.ini'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
@@ -30,42 +34,45 @@ ALLOWED_HOSTS = ['*']
 
 # 全局配置
 # salt-api地址
-SITE_SALT_API_URL = 'http://172.16.0.7:8080'
+SITE_SALT_API_URL = conf.get('global', 'SITE_SALT_API_URL')
 # salt-api用户
-SITE_SALT_API_NAME = 'saltapi'
+SITE_SALT_API_NAME = conf.get('global', 'SITE_SALT_API_NAME')
 # salt-api密码
-SITE_SALT_API_PWD = '123456'
-# salt-api的token
+SITE_SALT_API_PWD = conf.get('global', 'SITE_SALT_API_PWD')
+# salt-api的token，不需要填写
 SITE_SALT_API_TOKEN = ''
 # salt服务端安装的minion的id，服务端也要安装一下minion，有很多用到的时候
-SITE_SALT_MASTER = '172.16.0.7-master'
+SITE_SALT_MASTER = conf.get('global', 'SITE_SALT_MASTER')
 # salt服务端IP，salt-ssh等调用
-SITE_SALT_MASTER_IP = '172.16.0.7'
+SITE_SALT_MASTER_IP = conf.get('global', 'SITE_SALT_MASTER_IP')
 # web端宿主机的minion id
-SITE_WEB_MINION = '172.16.0.7-master'
+SITE_WEB_MINION = conf.get('global', 'SITE_WEB_MINION')
 # rsync服务端的宿主机minion id，发布系统的检出文件存放在rsync服务器里，如rsync服务是在master机子上salt自带的同步才能用，为了
 # 解耦发布系统取消salt同步只保留rsync同步
-SITE_RSYNC_MINION = '172.16.0.7-master'
+SITE_RSYNC_MINION = conf.get('global', 'SITE_RSYNC_MINION')
 # 发布系统中随机生成svn/git目录的路径和名字前缀，这里是xiaopgg作为前缀嘿嘿
 # 在views.py里后面加上当前时间来组成完整的目录路径，千万别出现中文因为py2版salt中文支持不好，出现中文后同步文件时目录可以同步文件不同步过去反而全被删除！！
-SITE_BASE_CO_PATH = '/data/xpgg_co/xpgg'
+SITE_BASE_CO_PATH = conf.get('global', 'SITE_BASE_CO_PATH')
 # 在用salt同步文件过程中发如果salt的master配置文件中的file_roots定义的svn目录内文件太多会非常的慢
 # 所以使用的软连接的方式同步完删除软连接来保持file_roots目录的整洁，这个目录要在master配置文件中也定义名称为xpgg指定目录和下面一样。不推荐！！
-SITE_BASE_CO_SYMLINK_PATH = '/data/xpgg_symlink/'
+SITE_BASE_CO_SYMLINK_PATH = conf.get('global', 'SITE_BASE_CO_SYMLINK_PATH')
 # 文件服务使用的临时目录
-SITE_BASE_TMP_PATH = '/data/xpgg_tmp/'
+SITE_BASE_TMP_PATH = conf.get('global', 'SITE_BASE_TMP_PATH')
 # 文件服务器rsync的内网ip和端口
-SITE_RSYNC_IP = '172.16.0.7'
-SITE_RSYNC_PORT = '873'
+SITE_RSYNC_IP = conf.get('global', 'SITE_RSYNC_IP')
+SITE_RSYNC_PORT = conf.get('global', 'SITE_RSYNC_PORT')
 # web服务器rsync的内网ip和端口,如果rsync服务器和web服务器不是同一台，则web服务器也需要开启rsync的daemon用来给文件服务的上传更新使用
-SITE_WEB_RSYNC_IP = '172.16.0.7'
-SITE_WEB_RSYNC_PORT = '873'
+SITE_WEB_RSYNC_IP = conf.get('global', 'SITE_WEB_RSYNC_IP')
+SITE_WEB_RSYNC_PORT = conf.get('global', 'SITE_WEB_RSYNC_PORT')
 # 限制上传更新等文件最大值
-SITE_MAX_FILE_SIZE = 5242880
+SITE_MAX_FILE_SIZE = conf.getint('global', 'SITE_MAX_FILE_SIZE')
 
 
 # celery调用参数设置
-CELERY_BROKER_URL = 'redis://:123456@localhost:6379/0'  # 使用redis做为消息队列格式：redis://:password@hostname:port/db_number
+# 使用redis做为消息队列格式：redis://:password@hostname:port/db_number
+CELERY_BROKER_URL = 'redis://:%s@%s:%s/0' % (conf.get('redis', 'REDIS_PASSWORD'),
+                                             conf.get('redis', 'REDIS_HOST_NAME'),
+                                             conf.get('redis', 'REDIS_POST'),)
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_ENABLE_UTC = True
@@ -145,11 +152,11 @@ WSGI_APPLICATION = 'xpgg_pro.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'xpgg_pro',    # 你的数据库名称
-        'USER': 'xiaopgg',   # 你的数据库用户名
-        'PASSWORD': '123456',  # 你的数据库密码
-        'HOST': '127.0.0.1',  # 你的数据库主机，留空默认为localhost
-        'PORT': '3306',  # 你的数据库端口,
+        'NAME': conf.get('mysql', 'MYSQL_DB_NAME'),    # 你的数据库名称
+        'USER': conf.get('mysql', 'MYSQL_USER'),   # 你的数据库用户名
+        'PASSWORD': conf.get('mysql', 'MYSQL_PASSWORD'),  # 你的数据库密码
+        'HOST': conf.get('mysql', 'MYSQL_HOST_NAME'),  # 你的数据库主机，留空默认为localhost
+        'PORT': conf.get('mysql', 'MYSQL_POST'),  # 你的数据库端口,
 
         'OPTIONS': {
         # 在mysql5.7以前需要加下面的来使得同步数据库时候不会出现严格模式的警告，5.7开始默认是严格模式了就可以省略
