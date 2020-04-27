@@ -274,6 +274,9 @@ STATICFILES_DIRS = (
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# 静态文件汇总目录
+STATIC_ROOT = os.path.join(BASE_DIR, 'collected_static')
+
 # 自定义用户model
 AUTH_USER_MODEL = 'xpgg_oms.MyUser'
 
