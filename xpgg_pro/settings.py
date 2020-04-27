@@ -72,7 +72,7 @@ SITE_MAX_FILE_SIZE = conf.getint('global', 'SITE_MAX_FILE_SIZE')
 # 使用redis做为消息队列格式：redis://:password@hostname:port/db_number
 CELERY_BROKER_URL = 'redis://:%s@%s:%s/0' % (conf.get('redis', 'REDIS_PASSWORD'),
                                              conf.get('redis', 'REDIS_HOST_NAME'),
-                                             conf.get('redis', 'REDIS_POST'),)
+                                             conf.get('redis', 'REDIS_PORT'),)
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_ENABLE_UTC = True
@@ -156,7 +156,7 @@ DATABASES = {
         'USER': conf.get('mysql', 'MYSQL_USER'),   # 你的数据库用户名
         'PASSWORD': conf.get('mysql', 'MYSQL_PASSWORD'),  # 你的数据库密码
         'HOST': conf.get('mysql', 'MYSQL_HOST_NAME'),  # 你的数据库主机，留空默认为localhost
-        'PORT': conf.get('mysql', 'MYSQL_POST'),  # 你的数据库端口,
+        'PORT': conf.get('mysql', 'MYSQL_PORT'),  # 你的数据库端口,
 
         'OPTIONS': {
         # 在mysql5.7以前需要加下面的来使得同步数据库时候不会出现严格模式的警告，5.7开始默认是严格模式了就可以省略
