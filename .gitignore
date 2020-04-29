@@ -1,5 +1,6 @@
 *.py[cod]
 *.log
+*.log.*
 __pycache__/
 xpgg_oms/migrations/*
 !xpgg_oms/migrations/__init__.py
