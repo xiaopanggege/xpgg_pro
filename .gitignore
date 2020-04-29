@@ -4,5 +4,7 @@
 __pycache__/
 xpgg_oms/migrations/*
 !xpgg_oms/migrations/__init__.py
+media/avatar/*
+!media/avatar/default.png
 celerybeat.pid
 collected_static
