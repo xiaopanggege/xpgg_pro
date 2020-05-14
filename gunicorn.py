@@ -16,8 +16,8 @@ pidfile = '/var/run/gunicorn.pid'
 # 工作模式协程
 worker_class = 'gevent'
 
-# 代码变更自动重启项目,生产环境禁用
-reload = 'false'
+# 代码变更自动重启项目,生产环境最好是false禁用
+reload = 'true'
 
 # 设置最大并发量
 worker_connections = 2000
