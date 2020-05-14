@@ -25,7 +25,7 @@ def custom_exception_handler(exc, context):
 
     # 注意当response为None时候将会重新触发django的标准500异常,
     if response is not None:
-        response.data['status_code'] = response.status_code
+        response.data['format_statestatus_code'] = response.status_code
         # 把所有错误码改成200返回，然后在返回的data里添加status_code中指定返回码,注意这个自定义方法只有在发生异常时才会被调用
         # 为了规范response.data里的字段，我统一规定code为返回码，msg为额外需要的返回信息
         response.status_code = 200
@@ -241,6 +241,12 @@ def format_state(result):
     b = (a['return'])
     # 用来存放所有minion格式化后的结果的
     result_data = []
+    # 发现在3000版本api执行sls返回的数据格式变成了{'return': [{'outputter': 'highstate', 'data': {xxxxx}}]}
+    # 而之前版本是{'return': [{xxxxx}]}，这个xxxxx就是各个以minion的id为key的结果如下
+    # {'192.168.0.118-master': {"cmd_|-rsync_dir_|-rsync -rvtD --exclude '.svn' --exclude .....}
+    # 所以需要添加下面的判断来来改变返回数据的结构
+    if b[0].get('outputter') and b[0].get('outputter') == 'highstate':
+        b = [b[0]['data']]
     try:
         # i是return后面的列表其实就是a['return'][0]
         for i in b:
