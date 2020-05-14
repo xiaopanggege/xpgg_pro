@@ -53,7 +53,10 @@ class DashboardViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             disk = psutil.disk_partitions()
             for i in disk:
                 disk_use = psutil.disk_usage(i.mountpoint)
-                sys_status.append({'name': '磁盘 %s 使用率' % i.device, 'value': '%.1f%%' % disk_use.percent})
+                # 判断一下磁盘是否已经存在列表中了，因为有时候一个磁盘挂载了好几个目录，disk里包含每个目录但其实都是同一个磁盘
+                # 所以加过一次以后，如果一样的就不要加了
+                if {'name': '磁盘 %s 使用率' % i.device, 'value': '%.1f%%' % disk_use.percent} not in sys_status:
+                    sys_status.append({'name': '磁盘 %s 使用率' % i.device, 'value': '%.1f%%' % disk_use.percent})
             response_data['results']['sys_status'] = sys_status
         else:
             response_data = {'results': serializer.errors, 'status': False}
