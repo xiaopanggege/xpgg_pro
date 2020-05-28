@@ -8,3 +8,4 @@ media/avatar/*
 !media/avatar/default.png
 celerybeat.pid
 collected_static
+.idea
