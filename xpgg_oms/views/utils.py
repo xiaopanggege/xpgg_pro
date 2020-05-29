@@ -25,7 +25,7 @@ def custom_exception_handler(exc, context):
 
     # 注意当response为None时候将会重新触发django的标准500异常,
     if response is not None:
-        response.data['format_statestatus_code'] = response.status_code
+        response.data['status_code'] = response.status_code
         # 把所有错误码改成200返回，然后在返回的data里添加status_code中指定返回码,注意这个自定义方法只有在发生异常时才会被调用
         # 为了规范response.data里的字段，我统一规定code为返回码，msg为额外需要的返回信息
         response.status_code = 200
