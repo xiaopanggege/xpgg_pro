@@ -1307,11 +1307,7 @@ class RealseaGroupViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "list":
             return release_serializers.ReleaseGroupModelSerializer
-        elif self.action == "create":
-            return release_serializers.ReleaseGroupCUDSerializer
-        elif self.action == "update":
-            return release_serializers.ReleaseGroupCUDSerializer
-        elif self.action == 'destroy':
+        elif self.action == "create" or self.action == "update" or self.action == "partial_update" or self.action == 'destroy':
             return release_serializers.ReleaseGroupCUDSerializer
         return release_serializers.ReleaseGroupModelSerializer
 
@@ -1454,13 +1450,7 @@ class RealseaAuthViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "list":
             return release_serializers.ReleaseAuthModelSerializer
-        elif self.action == "create":
-            return release_serializers.ReleaseAuthCUDSerializer
-        elif self.action == "update":
-            return release_serializers.ReleaseAuthCUDSerializer
-        elif self.action == 'destroy':
-            return release_serializers.ReleaseAuthCUDSerializer
-        elif self.action == 'partial_update':
+        elif self.action == "create" or self.action == "update" or self.action == "partial_update" or self.action == 'destroy':
             return release_serializers.ReleaseAuthCUDSerializer
         return release_serializers.ReleaseAuthModelSerializer
 
