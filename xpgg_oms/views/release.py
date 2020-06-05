@@ -1460,6 +1460,8 @@ class RealseaAuthViewSet(viewsets.ModelViewSet):
             return release_serializers.ReleaseAuthCUDSerializer
         elif self.action == 'destroy':
             return release_serializers.ReleaseAuthCUDSerializer
+        elif self.action == 'partial_update':
+            return release_serializers.ReleaseAuthCUDSerializer
         return release_serializers.ReleaseAuthModelSerializer
 
     def retrieve(self, request, *args, **kwargs):
