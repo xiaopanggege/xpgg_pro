@@ -39,8 +39,8 @@ class ReleaseCreateSerializer(serializers.Serializer):
     app_stop_cmd = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=2000, help_text='应用停止命令')
     app_start_style = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=50, help_text='应用启动方式')
     app_start_cmd = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=2000, help_text='应用启动命令')
-    cmd1 = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=2000, help_text='命令执行1')
-    cmd2 = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=2000, help_text='命令执行2')
+    cmd1 = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=2000, help_text='执行命令1')
+    cmd2 = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=2000, help_text='执行命令2')
     execution_style = serializers.CharField(max_length=20, help_text='多主机执行顺序')
     operation_list = serializers.ListField(max_length=400, help_text='操作列表')
     operation_arguments = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=4000, help_text='操作参数')
@@ -127,16 +127,16 @@ class ReleaseCreateSerializer(serializers.Serializer):
                 operation_arguments['app_start_cmd'] = data.get('app_start_cmd')
             else:
                 error_msg['app_start_cmd'] = ['应用启动命令不能为空']
-        if '命令执行1' in data.get('operation_list'):
+        if '执行命令1' in data.get('operation_list'):
             if data.get('cmd1', '').strip():
                 operation_arguments['cmd1'] = data.get('cmd1')
             else:
-                error_msg['cmd1'] = ['命令执行1不能为空']
-        if '命令执行2' in data.get('operation_list'):
+                error_msg['cmd1'] = ['执行命令1不能为空']
+        if '执行命令2' in data.get('operation_list'):
             if data.get('cmd2', '').strip():
                 operation_arguments['cmd2'] = data.get('cmd2')
             else:
-                error_msg['cmd2'] = ['命令执行2不能为空']
+                error_msg['cmd2'] = ['执行命令2不能为空']
         if len(error_msg):
             raise serializers.ValidationError(error_msg)
         else:
