@@ -393,16 +393,17 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                         with requests.Session() as s:
                             saltapi = SaltAPI(session=s)
                             # 判断检出状态，如果有说明已经检出过，那就使用更新up，如果没有就用检出co
+                            # --trust-server-cert-failures参数需求svn版本高一点，至少不要是默认yum安装的版本那个没有这参数，作用是支持https忽略证书交互
                             if co_status:
-                                cmd_data = 'svn up -r %s %s --no-auth-cache --non-interactive  --username=%s --password=%s' % (
+                                cmd_data = 'svn up -r %s %s --no-auth-cache --non-interactive --trust-server-cert-failures="unknown-ca,cn-mismatch,expired,not-yet-valid,other"  --username=%s --password=%s' % (
                                     release_version, app_data.co_path, operation_arguments['app_svn_user'],
                                     operation_arguments['app_svn_password'])
                                 # 用来做执行结果判断的，因为结果有很多意外情况，下面是对的情况下会出现的关键字
                                 check_data = "Updating '%s'" % app_data.co_path
                             else:
-                                cmd_data = 'svn co -r %s %s  %s --username=%s --password=%s --non-interactive --no-auth-cache' % (
-                                    release_version, operation_arguments['app_svn_url'], app_data.co_path,
-                                    operation_arguments['app_svn_user'], operation_arguments['app_svn_password'])
+                                cmd_data = 'svn co -r %s %s  %s --username=%s --password=%s --non-interactive --no-auth-cache --trust-server-cert-failures="unknown-ca,cn-mismatch,expired,not-yet-valid,other"' % (
+                                release_version, operation_arguments['app_svn_url'], app_data.co_path,
+                                operation_arguments['app_svn_user'], operation_arguments['app_svn_password'])
                                 check_data = 'Checked out revision'
                             response_data = saltapi.cmd_run_api(tgt=settings.SITE_RSYNC_MINION, arg=[
                                 cmd_data, 'reset_system_locale=false', "shell='/bin/bash'", "runas='root'"])
