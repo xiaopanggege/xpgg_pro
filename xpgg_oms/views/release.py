@@ -429,7 +429,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                     if operation == 'GIT更新':
                         co_status = AppRelease.objects.get(id=app_id).co_status
                         release_version = request.data.get('release_version', 'HEAD')
-                        # 目前只支持http方式的git，下面是拼接把用户名密码拼接进去这样就不用输入了,如果用户名有@需要转义
+                        # 目前只支持http和https方式的git，下面是拼接把用户名密码拼接进去这样就不用输入了,如果用户名有@需要转义
                         app_git_user_new = operation_arguments['app_git_user'].replace('@', '%40')
                         app_git_url_join_usr_passwd = operation_arguments['app_git_url'].split('://')[
                                                           0] + '://' + app_git_user_new + ':' + operation_arguments['app_git_password'] + '@' + \
