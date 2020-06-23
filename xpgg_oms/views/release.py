@@ -381,7 +381,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             # 层面导致多台业务出问题，顺序串行发布可以避免这一情况
             for minion_id in minion_list:
                 app_log.append(
-                    ('-' * 10 + ('Minion_ID:%s开始发布 时间戳%s' % (minion_id, time.strftime('%X'))) + '-' * 10).center(
+                    ('-' * 10 + ('Minion_ID:%s开始发布 时间%s' % (minion_id, time.strftime('%X'))) + '-' * 10).center(
                         88) + '\n')
                 for operation in operation_list:
                     if operation == 'SVN更新':
@@ -389,7 +389,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                         # 如果在上面就定义好，那么多个minion_id的新项目第一个id是检出后也全是检出，因为判断版本的时候都是空
                         co_status = AppRelease.objects.get(id=app_id).co_status
                         release_version = request.data.get('release_version', 'HEAD')
-                        app_log.append('\n\n开始执行SVN更新-> 时间戳%s\n' % time.strftime('%X'))
+                        app_log.append('\n\n开始执行SVN更新-> 时间%s\n' % time.strftime('%X'))
                         with requests.Session() as s:
                             saltapi = SaltAPI(session=s)
                             # 判断检出状态，如果有说明已经检出过，那就使用更新up，如果没有就用检出co
@@ -409,21 +409,21 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                 cmd_data, 'reset_system_locale=false', "shell='/bin/bash'", "runas='root'"])
                             # 当调用api失败的时候会返回false
                             if response_data['status'] is False:
-                                app_log.append('\n更新svn后台出错_error(1),报错内容：%s，请联系管理员. 时间戳%s\n' % (response_data['results'], time.strftime('%X')))
+                                app_log.append('\n更新svn后台出错_error(1),报错内容：%s，请联系管理员. 时间%s\n' % (response_data['results'], time.strftime('%X')))
                                 result['results'] = app_log
                                 return Response(result)
                             else:
                                 response_data = response_data['results']['return'][0][settings.SITE_RSYNC_MINION]
-
-                                if check_data in response_data:
+                                # 如果minion没启动或者写错了，返回是{'results': {'return': [{'xpgg-web': False}]}, 'status': True}
+                                if response_data is not False and check_data in response_data:
                                     AppRelease.objects.filter(id=app_id).update(co_status=True)
                                     app_log.append(
-                                        '\n' + str(response_data) + '\n\nSVN更新完成<- 时间戳%s\n' % time.strftime(
+                                        '\n' + str(response_data) + '\n\nSVN更新完成<- 时间%s\n' % time.strftime(
                                             '%X'))
 
                                 else:
                                     app_log.append(
-                                        '\nSVN更新失败:' + str(response_data) + '\n时间戳%s' % time.strftime('%X'))
+                                        '\nSVN更新失败:' + str(response_data) + '\n时间%s' % time.strftime('%X'))
                                     result['results'] = app_log
                                     return Response(result)
                     if operation == 'GIT更新':
@@ -434,7 +434,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                         app_git_url_join_usr_passwd = operation_arguments['app_git_url'].split('://')[
                                                           0] + '://' + app_git_user_new + ':' + operation_arguments['app_git_password'] + '@' + \
                                                       operation_arguments['app_git_url'].split('://')[1]
-                        app_log.append('\n\n开始执行GIT更新-> 时间戳%s\n' % time.strftime('%X'))
+                        app_log.append('\n\n开始执行GIT更新-> 时间%s\n' % time.strftime('%X'))
                         with requests.Session() as s:
                             saltapi = SaltAPI(session=s)
                             # 判断状态是否为True，如果有说明已经检出过，那就使用更新pull，如果没有就用git clone
@@ -458,7 +458,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                     check_data = 'HEAD is now at'
                             # 当调用api失败的时候会返回false
                             if response_data['status'] is False:
-                                app_log.append('\n更新git后台出错_error(1)，报错内容：%s，请联系管理员. 时间戳%s\n' % (response_data['results'], time.strftime('%X')))
+                                app_log.append('\n更新git后台出错_error(1)，报错内容：%s，请联系管理员. 时间%s\n' % (response_data['results'], time.strftime('%X')))
                                 result['results'] = app_log
                                 return Response(result)
                             else:
@@ -469,22 +469,22 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                         try:
                                             AppRelease.objects.filter(id=app_id).update(co_status=True)
                                             app_log.append(
-                                                '\n' + str(response_data) + '\n\nGIT更新完成<- 时间戳%s\n' % time.strftime(
+                                                '\n' + str(response_data) + '\n\nGIT更新完成<- 时间%s\n' % time.strftime(
                                                     '%X'))
                                         except Exception as e:
                                             app_log.append(
-                                                '\nGIT更新失败:\n' + str(response_data) + '\n时间戳%s' % time.strftime(
+                                                '\nGIT更新失败:\n' + str(response_data) + '\n时间%s' % time.strftime(
                                                     '%X'))
                                             result['results'] = app_log
                                             return Response(result)
                                     else:
                                         app_log.append(
-                                            '\nGIT更新失败:' + str(response_data) + '\n时间戳%s' % time.strftime('%X'))
+                                            '\nGIT更新失败:' + str(response_data) + '\n时间%s' % time.strftime('%X'))
                                         result['results'] = app_log
                                         return Response(result)
                                 except Exception as e:
                                     app_log.append(
-                                        '\nGIT更新失败:' + str(response_data) + '\n时间戳%s' % time.strftime('%X'))
+                                        '\nGIT更新失败:' + str(response_data) + '\n时间%s' % time.strftime('%X'))
                                     result['results'] = app_log
                                     return Response(result)
                     elif operation == '同步文件':
@@ -495,27 +495,27 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                         if sync_file_method == 'salt':
                             if settings.SITE_SALT_MASTER != settings.SITE_RSYNC_MINION:
                                 app_log.append(
-                                    '\nrsync服务与salt-master分属不同服务器无法使用salt同步文件，请修改为rsync同步文件感谢. 时间戳%s\n' % time.strftime('%X'))
+                                    '\nrsync服务与salt-master分属不同服务器无法使用salt同步文件，请修改为rsync同步文件感谢. 时间%s\n' % time.strftime('%X'))
                                 result['results'] = app_log
                                 return Response(result)
                             source_path = app_data.co_path.rstrip('/').rsplit('/', 1)[1]
                             sync_file_check_diff = operation_arguments['sync_file_check_diff']
                             symlink_path = settings.SITE_BASE_CO_SYMLINK_PATH + source_path
-                            app_log.append('\n\n开始执行同步文件-> 时间戳%s\n' % time.strftime('%X'))
+                            app_log.append('\n\n开始执行同步文件-> 时间%s\n' % time.strftime('%X'))
                             with requests.Session() as s:
                                 saltapi = SaltAPI(session=s)
                                 # 先创建软连接
                                 response_data = saltapi.file_symlink_api(tgt=settings.SITE_RSYNC_MINION,
                                                                          arg=[app_data.co_path, symlink_path])
                                 if response_data['status'] is False:
-                                    app_log.append('\n同步文件后台出错,SaltAPI调用file_symlink_api请求出错，请联系管理员. 时间戳%s\n' % time.strftime('%X'))
+                                    app_log.append('\n同步文件后台出错,SaltAPI调用file_symlink_api请求出错，请联系管理员. 时间%s\n' % time.strftime('%X'))
                                     result['results'] = app_log
                                     return Response(result)
                                 else:
                                     if response_data['results']['return'][0][settings.SITE_RSYNC_MINION] is not True:
                                         # 如果软连接创建失败会返回：{'return': [{'192.168.100.170': False}]}
                                         app_log.append('同步文件过程中，创建软连接失败\n' + str(response_data))
-                                        app_log.append('\n' + '文件同步失败！！ 时间戳%s\n' % time.strftime('%X'))
+                                        app_log.append('\n' + '文件同步失败！！ 时间%s\n' % time.strftime('%X'))
                                         result['results'] = app_log
                                         return Response(result)
                                 # 执行文件同步
@@ -526,7 +526,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                                                                   sync_file_check_diff), "queue=True"])
                                 if jid['status'] is False:
                                     app_log.append(
-                                        '\n同步文件后台出错,SaltAPI调用async_state_api请求出错，请联系管理员. 时间戳%s\n' % time.strftime(
+                                        '\n同步文件后台出错,SaltAPI调用async_state_api请求出错，请联系管理员. 时间%s\n' % time.strftime(
                                             '%X'))
                                     result['results'] = app_log
                                     return Response(result)
@@ -540,7 +540,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                             job_status = saltapi.job_active_api(tgt=minion_id, arg=jid)
                                             if job_status['status'] is False:
                                                 app_log.append(
-                                                    '\n同步文件后台出错,SaltAPI调用job_active_api请求出错，请联系管理员. 时间戳%s\n' % time.strftime(
+                                                    '\n同步文件后台出错,SaltAPI调用job_active_api请求出错，请联系管理员. 时间%s\n' % time.strftime(
                                                         '%X'))
                                                 result['results'] = app_log
                                                 return Response(result)
@@ -556,7 +556,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                                 elif value is False:
                                                     # 连续监测2次都是那就不用跑了直接返回离线结束呵呵
                                                     if re_count == 2:
-                                                        app_log.append('\n同步文件后台出错,您要发布的主机%s离线了，请联系管理员. 时间戳%s\n' % (
+                                                        app_log.append('\n同步文件后台出错,您要发布的主机%s离线了，请联系管理员. 时间%s\n' % (
                                                         minion_id, time.strftime('%X')))
                                                         result['results'] = app_log
                                                         return Response(result)
@@ -569,7 +569,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                                     # 注意[{}] ！= False所以不能用if jid_data['return']判断是否有数据，这个坑埋了好久奶奶的！！！
                                                     if jid_data['status'] is False:
                                                         app_log.append(
-                                                            '\n同步文件后台出错,SaltAPI调用jid_api请求出错,jid:%s，请联系管理员. 时间戳%s\n' % (
+                                                            '\n同步文件后台出错,SaltAPI调用jid_api请求出错,jid:%s，请联系管理员. 时间%s\n' % (
                                                             jid, time.strftime('%X')))
                                                         result['results'] = app_log
                                                         return Response(result)
@@ -585,7 +585,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                                             # 如果minion客户端停了会返回：{'return': [{'192.168.100.170': False}]}
                                                             app_log.append(format_result)
                                                             app_log.append(
-                                                                '\n' + '文件同步失败！！ 时间戳%s\n' % time.strftime('%X'))
+                                                                '\n' + '文件同步失败！！ 时间%s\n' % time.strftime('%X'))
                                                             result['results'] = app_log
                                                             return Response(result)
                                                         else:
@@ -595,32 +595,32 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                                                 if int(failed_result) != 0:
                                                                     app_log.extend(format_result)
                                                                     app_log.append(
-                                                                        '\n' + '文件同步失败！！ 时间戳%s\n' % time.strftime(
+                                                                        '\n' + '文件同步失败！！ 时间%s\n' % time.strftime(
                                                                             '%X'))
                                                                     result['results'] = app_log
                                                                     return Response(result)
                                                                 else:
                                                                     app_log.extend(format_result)
                                                                     app_log.append(
-                                                                        '\n\n文件同步完成<- 时间戳%s\n' % time.strftime(
+                                                                        '\n\n文件同步完成<- 时间%s\n' % time.strftime(
                                                                             '%X'))
                                                                     break
                                                             except Exception as e:
                                                                 app_log.append('\n' + '文件同步代码出错：' + str(
-                                                                    e) + '\n时间戳%s' % time.strftime('%X'))
+                                                                    e) + '\n时间%s' % time.strftime('%X'))
                                                                 result['results'] = app_log
                                                                 return Response(result)
                                                 check_count -= 1
                                                 time.sleep(15)
                                         else:
                                             app_log.append(
-                                                '\n' + '文件同步超过100分钟还没有结束，系统默认同步失败，如需获取同步结果请联系管理员通过jid：%s查看！！ 时间戳%s\n' % (
+                                                '\n' + '文件同步超过100分钟还没有结束，系统默认同步失败，如需获取同步结果请联系管理员通过jid：%s查看！！ 时间%s\n' % (
                                                 jid, time.strftime('%X')))
                                             result['results'] = app_log
                                             return Response(result)
                                     except Exception as e:
                                         app_log.append(str(e))
-                                        app_log.append('\n' + '文件同步失败！！ 时间戳%s\n' % time.strftime('%X'))
+                                        app_log.append('\n' + '文件同步失败！！ 时间%s\n' % time.strftime('%X'))
                                         result['results'] = app_log
                                         return Response(result)
                                     finally:
@@ -643,7 +643,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                             rsync_ip = operation_arguments.get('rsync_ip', settings.SITE_RSYNC_IP)
                             # salt-2018.3.0以前rsync的参数中没有additional_opts，无法指定很多东西，2018版本就有了，留这里为了新版使用
                             rsync_port = operation_arguments.get('rsync_port', settings.SITE_RSYNC_PORT)
-                            app_log.append('\n\n开始执行同步文件-> 时间戳%s\n' % time.strftime('%X'))
+                            app_log.append('\n\n开始执行同步文件-> 时间%s\n' % time.strftime('%X'))
                             with requests.Session() as s:
                                 saltapi = SaltAPI(session=s)
                                 if app_data.sys_type == 'windows':
@@ -662,7 +662,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
                                 if jid['status'] is False:
                                     app_log.append(
-                                        '\n同步文件后台出错,SaltAPI调用async_rsync_rsync_api请求出错，请联系管理员. 时间戳%s\n' % time.strftime(
+                                        '\n同步文件后台出错,SaltAPI调用async_rsync_rsync_api请求出错，请联系管理员. 时间%s\n' % time.strftime(
                                             '%X'))
                                     result['results'] = app_log
                                     return Response(result)
@@ -676,7 +676,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                             job_status = saltapi.job_active_api(tgt=minion_id, arg=jid)
                                             if job_status['status'] is False:
                                                 app_log.append(
-                                                    '\n同步文件后台出错,SaltAPI调用job_active_api请求出错，请联系管理员. 时间戳%s\n' % time.strftime(
+                                                    '\n同步文件后台出错,SaltAPI调用job_active_api请求出错，请联系管理员. 时间%s\n' % time.strftime(
                                                         '%X'))
                                                 result['results'] = app_log
                                                 return Response(result)
@@ -693,7 +693,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                                     # 连续监测2次都是那就不用跑了直接返回离线结束呵呵
                                                     if re_count == 2:
                                                         app_log.append(
-                                                            '\n同步文件后台出错,您要发布的主机%s离线了，请联系管理员. 时间戳%s\n' % (
+                                                            '\n同步文件后台出错,您要发布的主机%s离线了，请联系管理员. 时间%s\n' % (
                                                                 minion_id, time.strftime('%X')))
                                                         result['results'] = app_log
                                                         return Response(result)
@@ -706,7 +706,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                                     # 注意[{}] ！= False所以不能用if jid_data['return']判断是否有数据，这个坑埋了好久奶奶的！！！
                                                     if jid_data['status'] is False:
                                                         app_log.append(
-                                                            '\n同步文件后台出错,SaltAPI调用jid_api请求出错，请联系管理员. 时间戳%s\n' % time.strftime(
+                                                            '\n同步文件后台出错,SaltAPI调用jid_api请求出错，请联系管理员. 时间%s\n' % time.strftime(
                                                                 '%X'))
                                                         result['results'] = app_log
                                                         return Response(result)
@@ -722,7 +722,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                                             # 如果minion客户端停了会返回：{'return': [{'192.168.100.170': False}]}
                                                             app_log.append(format_result)
                                                             app_log.append(
-                                                                '\n' + '文件同步失败！！ 时间戳%s\n' % time.strftime(
+                                                                '\n' + '文件同步失败！！ 时间%s\n' % time.strftime(
                                                                     '%X'))
                                                             result['results'] = app_log
                                                             return Response(result)
@@ -734,32 +734,32 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                                                 if int(failed_result) != 0:
                                                                     app_log.extend(format_result)
                                                                     app_log.append(
-                                                                        '\n' + '文件同步失败！！ 时间戳%s\n' % time.strftime(
+                                                                        '\n' + '文件同步失败！！ 时间%s\n' % time.strftime(
                                                                             '%X'))
                                                                     result['results'] = app_log
                                                                     return Response(result)
                                                                 else:
                                                                     app_log.extend(format_result)
                                                                     app_log.append(
-                                                                        '\n\n文件同步完成<- 时间戳%s\n' % time.strftime(
+                                                                        '\n\n文件同步完成<- 时间%s\n' % time.strftime(
                                                                             '%X'))
                                                                     break
                                                             except Exception as e:
                                                                 app_log.append('\n' + '文件同步代码出错：' + str(
-                                                                    e) + '\n时间戳%s' % time.strftime('%X'))
+                                                                    e) + '\n时间%s' % time.strftime('%X'))
                                                                 result['results'] = app_log
                                                                 return Response(result)
                                                 check_count -= 1
                                                 time.sleep(15)
                                         else:
                                             app_log.append(
-                                                '\n' + '文件同步超过100分钟还没有结束，系统默认同步失败，如需获取同步结果请联系管理员通过jid：%s查看！！ 时间戳%s\n' % (
+                                                '\n' + '文件同步超过100分钟还没有结束，系统默认同步失败，如需获取同步结果请联系管理员通过jid：%s查看！！ 时间%s\n' % (
                                                     jid, time.strftime('%X')))
                                             result['results'] = app_log
                                             return Response(result)
                                     except Exception as e:
                                         app_log.append(str(e))
-                                        app_log.append('\n' + '文件同步失败！！ 时间戳%s\n' % time.strftime('%X'))
+                                        app_log.append('\n' + '文件同步失败！！ 时间%s\n' % time.strftime('%X'))
                                         result['results'] = app_log
                                         return Response(result)
                     elif operation == '应用停止':
@@ -1213,7 +1213,7 @@ class ReleaseOperationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                                     return Response(result)
 
                 app_log.append(
-                    ('-' * 10 + ('Minion_ID:%s发布完成 时间戳%s' % (minion_id, time.strftime('%X'))) + '-' * 10).center(
+                    ('-' * 10 + ('Minion_ID:%s发布完成 时间%s' % (minion_id, time.strftime('%X'))) + '-' * 10).center(
                         88) + '\n\n\n\n\n\n')
             result['status'] = True
             result['results'] = app_log
