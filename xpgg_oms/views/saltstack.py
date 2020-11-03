@@ -606,9 +606,10 @@ class SaltExeViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         tgt = request.data.get('tgt')
         tgt_type = request.data.get('tgt_type')
         fun = request.data.get('fun')
+        # 可以直接获取到list类型
         arg = request.data.get('arg')
         try:
-            # 这是判断arg是否传输值过来，如果没有前端会传个['']过来，这是由于我前端设置了的
+            # 这是判断arg是否传输值过来，如果没有前端会传个[]过来，这是由于我前端设置了的
             if not len(arg):
                 arg = None
             if tgt_type == 'list':

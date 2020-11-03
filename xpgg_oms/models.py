@@ -21,7 +21,7 @@ class MyUser(AbstractUser):
 
 # salt-key信息表
 class SaltKeyList(models.Model):
-    minion_id = models.CharField(max_length=20, verbose_name='MinionID')
+    minion_id = models.CharField(max_length=120, verbose_name='MinionID')
     certification_status = models.CharField(max_length=20, verbose_name='认证状态')
     update_time = models.DateTimeField(auto_now=True, verbose_name='最近一次更新时间')
     create_date = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
@@ -37,7 +37,7 @@ class SaltKeyList(models.Model):
 
 # minion客户端信息表
 class MinionList(models.Model):
-    minion_id = models.CharField(max_length=20, verbose_name='MinionID', primary_key=True)
+    minion_id = models.CharField(max_length=120, verbose_name='MinionID', primary_key=True)
     ip = models.CharField(max_length=200, verbose_name='IP地址', blank=True, null=True)
     minion_version = models.CharField(max_length=20, verbose_name='Minion版本', blank=True, null=True)
     system_issue = models.CharField(max_length=200, verbose_name='系统版本', blank=True, null=True)
