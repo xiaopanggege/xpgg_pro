@@ -58,7 +58,7 @@ class SaltAPI(object):
                 # 用data可以正常，用json的时候如果把arg=None的情况从提交里删除，就是不提交arg那也能正常，不过写通用方法比较麻烦感觉
                 # 不过如果用arg:[]则data和json都可以正确识别，目前用data都正常，如果有异常再做变更
                 headers = {'X-Auth-Token': settings.SITE_SALT_API_TOKEN}
-                response_data = self.session.post(self.url, data=data, headers=headers)
+                response_data = self.session.post(self.url, json=data, headers=headers)
                 status_code = response_data.status_code
                 response_data.raise_for_status()
             except Exception as e:
@@ -88,11 +88,12 @@ class SaltAPI(object):
 
     # 封装test.ping,默认执行salt '*' test.ping
     def test_api(self, client='local', tgt='*', tgt_type='glob', fun='test.ping', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
                 'fun': fun,
-                'arg': arg,
+                'arg': arg
                 }
         message = 'test_api'
         response_data = self.public(data, message)
@@ -108,6 +109,7 @@ class SaltAPI(object):
 
     # 封装cmd.run,使用的时候只要代入tgt和arg即可，最多把tgt_type也代入
     def cmd_run_api(self, client='local', tgt='*', tgt_type='glob', fun='cmd.run', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -123,6 +125,7 @@ class SaltAPI(object):
 
     # 封装异步cmd.run,使用的时候只要代入tgt和arg即可，最多把tgt_type也代入
     def async_cmd_run_api(self, client='local_async', tgt='*', tgt_type='glob', fun='cmd.run', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -138,6 +141,7 @@ class SaltAPI(object):
 
     # 封装state.sls,使用的时候只要代入tgt和arg即可，最多把tgt_type也代入
     def state_api(self, client='local', tgt='*', tgt_type='glob', fun='state.sls', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -153,6 +157,7 @@ class SaltAPI(object):
 
     # 封装异步state.sls,使用的时候只要代入tgt和arg即可，最多把tgt_type也代入，得到结果为jid号
     def async_state_api(self, client='local_async', tgt='*', tgt_type='glob', fun='state.sls', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -167,8 +172,14 @@ class SaltAPI(object):
             return {'results': response_data, 'status': True}
 
     # 封装通过jid查询任务执行状态，以便后续操作，返回[{}]表示执行完毕，返回数据表示还在执行
-    def job_active_api(self, tgt, arg, tgt_type='glob'):
-        data = {'client': 'local', 'tgt': tgt, 'tgt_type': tgt_type, 'fun': 'saltutil.find_job', 'arg': arg}
+    def job_active_api(self, client='local', tgt='*', tgt_type='glob', fun='saltutil.find_job', arg=None):
+        arg = [] if arg is None else arg
+        data = {'client': client,
+                'tgt': tgt,
+                'tgt_type': tgt_type,
+                'fun': fun,
+                'arg': arg
+                }
         message = 'job_active_api'
         response_data = self.public(data, message)
         if response_data is False:
@@ -178,6 +189,7 @@ class SaltAPI(object):
 
     # 封装查询jid执行状态,使用的时候只要代入jid既可以，返回true表示执行结束并且成功退出，false表示没有成功或者还没执行完毕
     def job_exit_success_api(self, client='runner', fun='jobs.exit_success', jid=None):
+        jid = [] if jid is None else jid
         data = {'client': client,
                 'fun': fun,
                 'jid': jid,
@@ -191,6 +203,7 @@ class SaltAPI(object):
 
     # 封装查询jid结果方法,使用的时候只要代入jid既可以
     def jid_api(self, client='runner', fun='jobs.lookup_jid', jid=None):
+        jid = [] if jid is None else jid
         data = {'client': client,
                 'fun': fun,
                 'jid': jid,
@@ -204,6 +217,7 @@ class SaltAPI(object):
 
     # 封装archive.zip,使用的时候只要代入tgt和arg即可，最多把tgt_type也代入
     def archive_zip_api(self, client='local', tgt='*', tgt_type='glob', fun='archive.zip', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -215,6 +229,7 @@ class SaltAPI(object):
 
     # 封装archive.tar,使用的时候只要代入tgt和arg即可，最多把tgt_type也代入
     def archive_tar_api(self, client='local', tgt='*', tgt_type='glob', fun='archive.tar', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -226,6 +241,7 @@ class SaltAPI(object):
 
     # 封装cp.get_file,使用的时候只要代入tgt和arg即可，最多把tgt_type也代入
     def cp_get_file_api(self, client='local', tgt='*', tgt_type='glob', fun='cp.get_file', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -237,6 +253,7 @@ class SaltAPI(object):
 
     # 封装cp.get_dir,使用的时候只要代入tgt和arg即可，最多把tgt_type也代入
     def cp_get_dir_api(self, client='local', tgt='*', tgt_type='glob', fun='cp.get_dir', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -260,6 +277,7 @@ class SaltAPI(object):
 
     # 封装salt-key -d删除指令
     def saltkey_delete_api(self, client='wheel', fun='key.delete', match=None):
+        match = [] if match is None else match
         data = {'client': client,
                 'fun': fun,
                 'match': match
@@ -281,6 +299,7 @@ class SaltAPI(object):
     # 接受salt-key的方法奶奶的include_rejected和include_denied就算设置为True也无效测试发现！！
     def saltkey_accept_api(self, client='wheel', fun='key.accept', match=None, include_rejected=False,
                            include_denied=False):
+        match = [] if match is None else match
         data = {'client': client,
                 'fun': fun,
                 'match': match,
@@ -305,6 +324,7 @@ class SaltAPI(object):
     # 拒绝salt-key的方法奶奶的include_accepted和include_denied就算设置为True也无效测试发现！！
     def saltkey_reject_api(self, client='wheel', fun='key.reject', match=None, include_accepted=False,
                            include_denied=False):
+        match = [] if match is None else match
         data = {'client': client,
                 'fun': fun,
                 'match': match,
@@ -321,6 +341,7 @@ class SaltAPI(object):
 
     # salt-run manage.status 查看minion在线离线状态，速度比较慢但是没BUG不像salt-run manage.alived
     def saltrun_manage_status_api(self, client='runner', fun='manage.status', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'fun': fun,
                 'arg': arg,
@@ -335,6 +356,7 @@ class SaltAPI(object):
 
     # salt-run manage.alived 查看在线的minion，非常快速方便可惜有bug后来启用(而且可以带参数show_ipv4=True获取到和master通信的ip是什么，默认False)
     def saltrun_manage_alive_api(self, client='runner', fun='manage.alived', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'fun': fun,
                 'arg': arg,
@@ -348,6 +370,7 @@ class SaltAPI(object):
 
     # salt-run manage.not_alived 查看不在线的minion，非常快速方便可惜有bug后来启用
     def saltrun_manage_notalive_api(self, client='runner', fun='manage.not_alived', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'fun': fun,
                 'arg': arg,
@@ -361,6 +384,7 @@ class SaltAPI(object):
 
     # 封装grains.itmes,使用的时候只要代入tgt和arg即可，最多把tgt_type也代入
     def grains_itmes_api(self, client='local', tgt='*', tgt_type='glob', fun='grains.items', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -376,6 +400,7 @@ class SaltAPI(object):
 
     # 封装service.available查看服务是否存在Ture or False,使用的时候只要代入tgt和arg即可，最多把tgt_type也代入
     def service_available_api(self, client='local', tgt='*', tgt_type='glob', fun='service.available', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -391,6 +416,7 @@ class SaltAPI(object):
 
     # 封装service.status查看启动服务状态,使用的时候只要代入tgt和arg即可，最多把tgt_type也代入
     def service_status_api(self, client='local', tgt='*', tgt_type='glob', fun='service.status', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -406,6 +432,7 @@ class SaltAPI(object):
 
     # 封装service.start启动系统服务windows和linux通用，
     def service_start_api(self, client='local', tgt='*', tgt_type='glob', fun='service.start', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -422,6 +449,7 @@ class SaltAPI(object):
     # 封装service.stop停止系统服务windows和linux通用，salt '*' service.stop <service name>，由于有发现停止成功但是返回结果是
     # 一堆错误提示，所以最好使用的时候最后做一步service.status，返回服务状态True说明启动，False说明停止了
     def service_stop_api(self, client='local', tgt='*', tgt_type='glob', fun='service.stop', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -437,6 +465,7 @@ class SaltAPI(object):
 
     # 封装ps.pgrep查看name的进程号windows和linux通用带模糊查询效果，
     def ps_pgrep_api(self, client='local', tgt='*', tgt_type='glob', fun='ps.pgrep', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -453,6 +482,7 @@ class SaltAPI(object):
     # 封装ps.proc_info通过进程号查看详细信息，
     # {'client':'local', 'tgt':'id','fun':'ps.proc_info', 'arg':['pid=123','attrs=["cmdline","pid","name","status"]']}
     def ps_proc_info_api(self, client='local', tgt='*', tgt_type='glob', fun='ps.proc_info', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -468,6 +498,7 @@ class SaltAPI(object):
 
     # 封装ps.kill_pid结束某个进程，{'client':'local','fun':'ps.kill_pid','tgt':'192.168.68.1', 'arg':['pid=11932']}
     def ps_kill_pid_api(self, client='local', tgt='*', tgt_type='glob', fun='ps.kill_pid', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -484,6 +515,7 @@ class SaltAPI(object):
     # 封装task.create_task创建windows计划任务，salt '192.168.68.1' task.create_task ooxx  action_type=Execute
     # cmd='"C:\ooxx\Shadowsocks.exe"' force=true execution_time_limit=False  user_name=administrator
     def task_create_api(self, client='local', tgt='*', tgt_type='glob', fun='task.create_task', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -500,6 +532,7 @@ class SaltAPI(object):
     # 封装task.run启动windows计划任务，salt '192.168.100.171' task.run test1
     # ！坑！官方文档里命令是salt '192.168.100.171' task.list_run test1 根本就不行！
     def task_run_api(self, client='local', tgt='*', tgt_type='glob', fun='task.run', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -515,6 +548,7 @@ class SaltAPI(object):
 
     # 封装task.stop启动windows计划任务，salt '192.168.100.171' task.run test1
     def task_stop_api(self, client='local', tgt='*', tgt_type='glob', fun='task.stop', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -530,6 +564,7 @@ class SaltAPI(object):
 
     # 封装file.mkdir,创建目录最后可以不需要/号，另一个file.makedirs则需要最后/，不然只创建到有/那一层这点也是可以利用的呵呵
     def file_mkdir_api(self, client='local', tgt='*', tgt_type='glob', fun='file.mkdir', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -545,6 +580,7 @@ class SaltAPI(object):
 
     # 封装file.makedirs,创建目录最后可以需要/号，不然只创建到有/那一层这点也是可以利用的呵呵
     def file_makedirs_api(self, client='local', tgt='*', tgt_type='glob', fun='file.makedirs', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -560,6 +596,7 @@ class SaltAPI(object):
 
     # 封装file.touch,同命令行touch命令
     def file_touch_api(self, client='local', tgt='*', tgt_type='glob', fun='file.touch', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -575,6 +612,7 @@ class SaltAPI(object):
 
     # 封装file.rename,修改文件或者文件夹名称arg=[src,dst]
     def file_rename_api(self, client='local', tgt='*', tgt_type='glob', fun='file.rename', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -590,6 +628,7 @@ class SaltAPI(object):
 
     # 封装file_exists,检查文件是否存在
     def file_exists_api(self, client='local', tgt='*', tgt_type='glob', fun='file.file_exists', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -605,6 +644,7 @@ class SaltAPI(object):
 
     # 封装file_write,写入文件
     def file_write_api(self, client='local', tgt='*', tgt_type='glob', fun='file.write', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -620,6 +660,7 @@ class SaltAPI(object):
 
     # 封装file.remove,移除文件，如果是目录则递归删除
     def file_remove_api(self, client='local', tgt='*', tgt_type='glob', fun='file.remove', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -636,6 +677,7 @@ class SaltAPI(object):
     # 封装file.directory_exists,检测目录是否存在返回True/False
     def file_directory_exists_api(self, client='local', tgt='*', tgt_type='glob', fun='file.directory_exists',
                                   arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -651,6 +693,7 @@ class SaltAPI(object):
 
     # 封装file.symlink,创建软连接
     def file_symlink_api(self, client='local', tgt='*', tgt_type='glob', fun='file.symlink', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -666,6 +709,7 @@ class SaltAPI(object):
 
     # 封装file.diskusage,创建软连接
     def file_diskusage_api(self, client='local', tgt='*', tgt_type='glob', fun='file.diskusage', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -681,6 +725,7 @@ class SaltAPI(object):
 
     # 封装file.read,读取文件内容
     def file_read_api(self, client='local', tgt='*', tgt_type='glob', fun='file.read', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -704,6 +749,7 @@ class SaltAPI(object):
     #  uptime 1 day, 6:56:14'}}}]}
     # 停止{'return': [{'192.168.100.170': {'test': {'state': 'STOPPED', 'reason': 'Dec 13 05:23 PM'}}}]}
     def supervisord_status_api(self, client='local', tgt='*', tgt_type='glob', fun='supervisord.status', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -718,6 +764,7 @@ class SaltAPI(object):
     # 2、正常停止：{'return': [{'192.168.100.170': 'test: stopped'}]}
     # 3、没这个程序名称{'return': [{'192.168.100.170': 'test1: ERROR (no such process)'}]}
     def supervisord_stop_api(self, client='local', tgt='*', tgt_type='glob', fun='supervisord.stop', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -732,6 +779,7 @@ class SaltAPI(object):
     # 2、已经启动过了{'return': [{'192.168.100.170': 'test: ERROR (already started)'}]}
     # 3、没这个程序名称{'return': [{'192.168.100.170': 'test1: ERROR (no such process)'}]}
     def supervisord_start_api(self, client='local', tgt='*', tgt_type='glob', fun='supervisord.start', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -743,6 +791,7 @@ class SaltAPI(object):
 
     # supervisord配置重载会启动新添加的程序
     def supervisord_update_api(self, client='local', tgt='*', tgt_type='glob', fun='supervisord.update', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -758,6 +807,7 @@ class SaltAPI(object):
 
     # 封装rsync.rsync同步命令
     def rsync_rsync_api(self, client='local', tgt='*', tgt_type='glob', fun='rsync.rsync', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -773,6 +823,7 @@ class SaltAPI(object):
 
     # 封装异步rsync.rsync同步命令
     def async_rsync_rsync_api(self, client='local_async', tgt='*', tgt_type='glob', fun='rsync.rsync', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -788,6 +839,9 @@ class SaltAPI(object):
 
     # 封装sys.doc查询模块帮助命令
     def sys_doc_api(self, client='local', tgt='*', tgt_type='glob', fun='sys.doc', arg=None):
+        arg = [] if arg is None else arg
+        if arg is None:
+            arg = []
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -803,6 +857,9 @@ class SaltAPI(object):
 
     # 封装sys.doc查询模块帮助命令
     def sys_runner_doc_api(self, client='local', tgt='*', tgt_type='glob', fun='sys.runner_doc', arg=None):
+        arg = [] if arg is None else arg
+        if arg is None:
+            arg = []
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -818,6 +875,7 @@ class SaltAPI(object):
 
     # 封装sys.doc查询模块帮助命令
     def sys_state_doc_api(self, client='local', tgt='*', tgt_type='glob', fun='sys.state_doc', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -833,6 +891,7 @@ class SaltAPI(object):
 
     # 封装git.clone命令
     def git_clone_api(self, client='local', tgt='*', tgt_type='glob', fun='git.clone', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -848,6 +907,7 @@ class SaltAPI(object):
 
     # 封装git.pull命令
     def git_pull_api(self, client='local', tgt='*', tgt_type='glob', fun='git.pull', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -863,6 +923,7 @@ class SaltAPI(object):
 
     # 封装git.reset命令
     def git_reset_api(self, client='local', tgt='*', tgt_type='glob', fun='git.reset', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,
@@ -891,6 +952,7 @@ class SaltAPI(object):
 
     # 封装find查找文件夹命令
     def find_find_api(self, client='local', tgt='*', tgt_type='glob', fun='file.find', arg=None):
+        arg = [] if arg is None else arg
         data = {'client': client,
                 'tgt': tgt,
                 'tgt_type': tgt_type,

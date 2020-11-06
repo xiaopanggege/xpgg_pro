@@ -603,17 +603,13 @@ class SaltExeViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     def create(self, request, *args, **kwargs):
         # 执行salt命令操作
         client = request.data.get('client')
+        # drf的request.data.get可以直接获取到list类型
+        arg = request.data.get('arg')
         tgt = request.data.get('tgt')
         tgt_type = request.data.get('tgt_type')
         fun = request.data.get('fun')
-        # 可以直接获取到list类型
-        arg = request.data.get('arg')
+
         try:
-            # 这是判断arg是否传输值过来，如果没有前端会传个[]过来，这是由于我前端设置了的
-            if not len(arg):
-                arg = None
-            if tgt_type == 'list':
-                tgt = [tgt]
             if client != 'runner':
                 data = {'client': client, 'tgt': tgt, 'tgt_type': tgt_type, 'fun': fun, 'arg': arg}
             else:
@@ -779,6 +775,8 @@ class FileTreeViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                     else:
                         check += 1
                         count -= 1
+        if not len(response_path):
+            return Response({'results': '文件管理执行文件目录查询失败,请确认base目录是否存在', 'status': False})
         # 多返回一个max_id，主要是前端创建文件或者文件夹的时候需要用到id，避免下重复
         return Response({'results': [response_path[0]], 'max_id': b, 'max_size': settings.SITE_MAX_FILE_SIZE, 'status': True})
 

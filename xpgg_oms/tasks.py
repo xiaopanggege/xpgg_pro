@@ -29,8 +29,6 @@ def add(self, x, y):
 @shared_task(bind=True, name='命令')
 def cmd(self, periodic_name='未命名', tgt='*', tgt_type='glob', execute_cmd=''):
     # periodic_name参数是为了给signals.py里结果入库之前修改task_name使得生成的结果task_name个性化使用的
-    if tgt_type == 'list':
-        tgt = [tgt]
     with requests.Session() as s:
         saltapi = SaltAPI(session=s)
         response_data = saltapi.cmd_run_api(tgt=tgt, tgt_type=tgt_type,
