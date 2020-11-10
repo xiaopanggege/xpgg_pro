@@ -52,7 +52,7 @@ def create_route(queryset):
             tmp['hidden'] = data.hidden
         children = data.pid.all()
         if len(children) > 0:
-            tmp['children'] = create_route(data.pid.all())
+            tmp['children'] = create_route(data.pid.all().order_by('route_id'))
             data_list.append(tmp)
         else:
             data_list.append(tmp)
@@ -101,7 +101,7 @@ def create_route_role(queryset, role):
                 tmp['hidden'] = data.hidden
             children = data.pid.all()
             if len(children) > 0:
-                tmp['children'] = create_route_role(data.pid.all(), role)
+                tmp['children'] = create_route_role(data.pid.all().order_by('route_id'), role)
                 data_list.append(tmp)
             else:
                 data_list.append(tmp)

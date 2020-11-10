@@ -374,7 +374,7 @@
   "model": "xpgg_oms.routes",
   "pk": 17,
   "fields": {
-    "route_id": 9100,
+    "route_id": 9200,
     "name": "UserControl",
     "path": "user",
     "component": "/views/system/UserControl",
@@ -566,6 +566,28 @@
     "parentId": 6,
     "create_time": "2020-01-02T15:49:24.465",
     "roles": []
+  }
+},
+{
+  "model": "xpgg_oms.routes",
+  "pk": 26,
+  "fields": {
+    "route_id": 9100,
+    "name": "UserInfo",
+    "path": "userinfo",
+    "component": "/views/system/UserInfo",
+    "redirect": null,
+    "alwaysShow": null,
+    "hidden": false,
+    "title": "\u4e2a\u4eba\u4e2d\u5fc3",
+    "icon": null,
+    "noCache": null,
+    "affix": null,
+    "breadcrumb": null,
+    "activeMenu": null,
+    "parentId": 16,
+    "create_time": "2020-11-10T16:46:34.937",
+    "roles": [1]
   }
 },
 {
