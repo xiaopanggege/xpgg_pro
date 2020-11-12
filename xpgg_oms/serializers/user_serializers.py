@@ -44,5 +44,6 @@ class MyUserDetailSerializer(serializers.ModelSerializer):
         instance.is_active = validated_data.get('is_active', instance.is_active)
         instance.is_superuser = validated_data.get('is_superuser', instance.is_superuser)
         instance.avatar = validated_data.get('avatar', instance.avatar)
+        instance.email = validated_data.get('email', instance.email)
         instance.save()
         return instance
