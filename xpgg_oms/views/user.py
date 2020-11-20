@@ -12,6 +12,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from xpgg_oms.serializers import user_serializers
 from xpgg_oms.models import MyUser
 from django.contrib.auth.models import Group
+from django.contrib.auth import authenticate
+from drf_yasg.utils import swagger_auto_schema
 
 import logging
 logger = logging.getLogger('xpgg_oms.views')
@@ -90,3 +92,19 @@ class MyUserViewSet(viewsets.ModelViewSet):
             return Response(response_data)
 
 
+# 个人中心修改密码时候判断旧密码 APIVIEW方式
+class PassAuth(APIView):
+    """
+    判断旧密码
+
+    """
+    # 默认APIView在swagger里面无法测试填入参数，必须加下面的这个才可以
+    @swagger_auto_schema(request_body=user_serializers.PasswordAuthSerializer)
+    def post(self, request, format=None):
+        username = self.request.user.username
+        password = request.data.get('password')
+        user = authenticate(username=username, password=password)
+        if user is not None:
+            return Response({'status': True})
+        else:
+            return Response({'results': '旧密码错误','status': False})

@@ -47,3 +47,8 @@ class MyUserDetailSerializer(serializers.ModelSerializer):
         instance.email = validated_data.get('email', instance.email)
         instance.save()
         return instance
+
+
+# 用户密码验证
+class PasswordAuthSerializer(serializers.Serializer):
+    password = serializers.CharField()

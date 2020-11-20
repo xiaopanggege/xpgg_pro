@@ -83,6 +83,7 @@ urlpatterns = [
     #  APIView的路由表
     url(r'^users/$', menus.UserList.as_view()),
     url(r'^routes/$', menus.RoutesModel.as_view()),
+    url(r'^passauth/$', user.PassAuth.as_view()),
 ]
 
 
