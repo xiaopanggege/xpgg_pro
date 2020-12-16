@@ -269,10 +269,11 @@ class SaltMinionViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixi
         return saltstack_serializers.SaltMinionSerializer
 
     def retrieve(self, request, *args, **kwargs):
+        # 注意数据库sys字段首字母是大写的
         if request.query_params.get('sys') == 'windows':
-            minion_id_list = MinionList.objects.filter(sys='windows').order_by('create_date').values_list('minion_id', flat=True)
+            minion_id_list = MinionList.objects.filter(sys='Windows').order_by('create_date').values_list('minion_id', flat=True)
         elif request.query_params.get('sys') == 'linux':
-            minion_id_list = MinionList.objects.filter(sys='linux').order_by('create_date').values_list('minion_id', flat=True)
+            minion_id_list = MinionList.objects.filter(sys='Linux').order_by('create_date').values_list('minion_id', flat=True)
         else:
             minion_id_list = MinionList.objects.all().order_by('create_date').values_list('minion_id', flat=True)
         return Response({'results': list(minion_id_list), 'status': True})
@@ -445,7 +446,7 @@ class SaltCmdViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.Ge
 
     def create(self, request, *args, **kwargs):
         # 收集salt命令集操作
-        # salt接受多个minion不是正常的列表['a','b','c']而是'a,b,c'
+        # 以前salt接受多个minion不是正常的列表['a','b','c']而是'a,b,c'，但是现在是了
         minions = request.data.get('minions')
         collection_style = request.data.get('collection_style')
         try:

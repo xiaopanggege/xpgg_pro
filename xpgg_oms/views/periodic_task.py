@@ -266,7 +266,6 @@ class TaskResultScheduleModelViewSet(viewsets.ModelViewSet):
     def multiple_delete(self, request, *args, **kwargs):
         try:
             id_list = request.query_params.getlist('id_list', None)
-            logger.error(id_list)
             TaskResult.objects.filter(id__in=id_list).delete()
             return Response({'results': '删除成功', 'status': True})
         except Exception as e:
