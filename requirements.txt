@@ -45,5 +45,5 @@ simplejson==3.16.0
 six==1.12.0
 sqlparse==0.3.0
 uritemplate==3.0.0
-urllib3==1.25.8
+urllib3==1.26.5
 vine==1.3.0
