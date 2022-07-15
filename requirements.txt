@@ -7,7 +7,7 @@ coreapi==2.3.3
 coreschema==0.0.4
 Django==2.2.13
 django-celery-beat==1.5.0
-django-celery-results==1.1.2
+django-celery-results==2.4.0
 django-cleanup==4.0.0
 django-cors-headers==2.4.0
 django-crispy-forms==1.8.1
