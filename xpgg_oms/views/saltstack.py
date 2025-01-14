@@ -2,7 +2,6 @@ from django.http import JsonResponse, HttpResponseRedirect
 from xpgg_oms.salt_api import SaltAPI
 from xpgg_oms.models import *
 from xpgg_oms import tasks
-from .utils import StandardPagination
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -67,8 +66,7 @@ class SaltKeyViewSet(SaltKeyUtils, mixins.CreateModelMixin, mixins.RetrieveModel
     filter_fields = ('certification_status', 'id')
     lookup_field = 'minion_id'
     lookup_value_regex = '.+'  # 自定义上面匹配字段的正则模式，默认是[a-z0-9]+匹配不到个别minion id
-    # 引入公共分页类
-    pagination_class = StandardPagination
+
     # 自定义每页个数
     # pagination_class.page_size = 1
 
@@ -252,8 +250,7 @@ class SaltMinionViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixi
     serializer_class = saltstack_serializers.SaltMinionSerializer
     filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
     filter_class = MinionListFilter
-    # 引入公共分页类
-    pagination_class = StandardPagination
+
     # 自定义每页个数
     # pagination_class.page_size = 1
 
@@ -393,6 +390,7 @@ class SaltMinionUpdateViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                             # 有出现过某个minion的依赖文件被删除了但是minion进程还在，导致grains.items没有结果返回
                             # 这样就会出现vlaue不是一个字典而是是一个str正常value内容是{'ipv4':'xxxxx'}异常时候会是'grains.items is false'
                             # 具体是什么str没记住哈哈，不过由于不少字典而又用了get来获取字典值所以会触发try的错误，也就有了下面的操作
+                            logger.error('单minion更新数据出错0，请检查'+ str(e))
                             MinionList.objects.filter(minion_id=minion_id).update(minion_status='异常',
                                                                                   update_time=datetime.datetime.now())
                     except Exception as e:
@@ -427,8 +425,6 @@ class SaltCmdViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.Ge
     serializer_class = saltstack_serializers.SaltCmdSerializer
     filter_backends = (DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter)
     filter_fields = ('salt_cmd_type', 'salt_cmd_module', 'salt_cmd')
-    # 引入公共分页类
-    pagination_class = StandardPagination
 
     # 搜索框
     search_fields = ('salt_cmd',)
@@ -561,6 +557,8 @@ class SaltCmdModuleListViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = saltstack_serializers.SaltCmdModuleListSerializer
     filter_backends = (DjangoFilterBackend,)
     filter_fields = ('salt_cmd_type',)
+    # 这个要取消分页，因为我需要返回所有
+    pagination_class = None
 
     def get_queryset(self):
         salt_cmd_type = self.request.GET.get('salt_cmd_type')
@@ -580,6 +578,8 @@ class SaltCmdCmdleListViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = saltstack_serializers.SaltCmdCmdListSerializer
     filter_backends = (DjangoFilterBackend,)
     filter_fields = ('salt_cmd_type', 'salt_cmd_module')
+    # 返回所有，所以取消分页
+    pagination_class = None
 
     def get_queryset(self):
         salt_cmd_type = self.request.GET.get('salt_cmd_type')

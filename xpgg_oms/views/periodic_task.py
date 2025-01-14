@@ -1,4 +1,3 @@
-from xpgg_oms.views.utils import StandardPagination
 from rest_framework.response import Response
 from rest_framework import viewsets
 from rest_framework import mixins
@@ -26,7 +25,6 @@ class ClockedScheduleModelViewSet(viewsets.ModelViewSet):
     """
     queryset = models.ClockedSchedule.objects.all()
     serializer_class = periodic_task_serializers.ClockedScheduleModelSerializer
-    pagination_class = StandardPagination
     filter_backends = (filters.SearchFilter, filters.OrderingFilter)
     # 可选的排序规则
     ordering_fields = ('id', 'clocked_time')
@@ -55,7 +53,6 @@ class CrontabScheduleModelViewSet(viewsets.ModelViewSet):
     """
     queryset = models.CrontabSchedule.objects.all()
     serializer_class = periodic_task_serializers.CrontabScheduleModelSerializer
-    pagination_class = StandardPagination
     filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
     filter_fields = ('id',)
     # 可选的排序规则
@@ -89,7 +86,6 @@ class IntervalScheduleModelViewSet(viewsets.ModelViewSet):
     """
     queryset = models.IntervalSchedule.objects.all()
     serializer_class = periodic_task_serializers.IntervalScheduleModelSerializer
-    pagination_class = StandardPagination
     filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
     filter_fields = ('id',)
     # 可选的排序规则
@@ -124,7 +120,6 @@ class PeriodicTaskModelViewSet(viewsets.ModelViewSet):
     # 只需要给前端显示任务模板是命令或者脚本的任务即可
     queryset = models.PeriodicTask.objects.filter(Q(task='命令') | Q(task='脚本'))
     serializer_class = periodic_task_serializers.PeriodicTaskModelSerializer
-    pagination_class = StandardPagination
     filter_backends = (filters.SearchFilter, filters.OrderingFilter)
     # 搜索框
     search_fields = ('name',)
@@ -171,6 +166,7 @@ class ClockedListModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """
     queryset = models.ClockedSchedule.objects.all()
     serializer_class = periodic_task_serializers.ClockedScheduleModelSerializer
+    pagination_class = None
 
 
 # 获取Crontab列表，任务调度表新增的时候需要显示所有可选Crontab
@@ -184,6 +180,7 @@ class CrontabListModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     # crontab表的timezone字段比较特殊无法直接查询出来用Response返回会报错，所以要调用序列化，序列化里有手动做了处理我
     queryset = models.CrontabSchedule.objects.all()
     serializer_class = periodic_task_serializers.CrontabScheduleModelSerializer
+    pagination_class = None
 
 
 # 获取Interval列表，任务调度表新增的时候需要显示所有可选Interval
@@ -196,6 +193,7 @@ class IntervalListModelViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     queryset = models.IntervalSchedule.objects.all()
     serializer_class = periodic_task_serializers.IntervalScheduleModelSerializer
+    pagination_class = None
 
 
 # 手动立即执行一次任务
@@ -252,7 +250,6 @@ class TaskResultScheduleModelViewSet(viewsets.ModelViewSet):
     """
     queryset = TaskResult.objects.all()
     serializer_class = periodic_task_serializers.TaskResultScheduleModelSerializer
-    pagination_class = StandardPagination
     filter_backends = (filters.SearchFilter, filters.OrderingFilter)
     # 搜索框
     search_fields = ('task_name',)

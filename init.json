@@ -37,7 +37,9 @@
     "activeMenu": null,
     "parentId": null,
     "create_time": "2019-05-31T16:14:55.644",
-    "roles": []
+    "roles": [
+      1
+    ]
   }
 },
 {
@@ -59,7 +61,9 @@
     "activeMenu": null,
     "parentId": 1,
     "create_time": "2019-05-31T16:15:26.071",
-    "roles": []
+    "roles": [
+      1
+    ]
   }
 },
 {
@@ -81,7 +85,9 @@
     "activeMenu": null,
     "parentId": 1,
     "create_time": "2019-05-31T16:17:29.707",
-    "roles": []
+    "roles": [
+      1
+    ]
   }
 },
 {
@@ -103,7 +109,9 @@
     "activeMenu": null,
     "parentId": 1,
     "create_time": "2019-05-31T16:17:56.288",
-    "roles": []
+    "roles": [
+      1
+    ]
   }
 },
 {
@@ -125,7 +133,9 @@
     "activeMenu": null,
     "parentId": 1,
     "create_time": "2019-05-31T16:18:30.451",
-    "roles": []
+    "roles": [
+      1
+    ]
   }
 },
 {
@@ -147,7 +157,9 @@
     "activeMenu": null,
     "parentId": 1,
     "create_time": "2019-05-31T16:18:53.025",
-    "roles": []
+    "roles": [
+      1
+    ]
   }
 },
 {
@@ -267,7 +279,7 @@
     "route_id": 1700,
     "name": "Permission",
     "path": "/permission",
-    "component": "/layout/Layou",
+    "component": "/layout/Layout",
     "redirect": "/permission/role",
     "alwaysShow": true,
     "hidden": false,
@@ -563,9 +575,11 @@
     "affix": null,
     "breadcrumb": null,
     "activeMenu": null,
-    "parentId": 6,
+    "parentId": 1,
     "create_time": "2020-01-02T15:49:24.465",
-    "roles": []
+    "roles": [
+      1
+    ]
   }
 },
 {
@@ -587,7 +601,55 @@
     "activeMenu": null,
     "parentId": 16,
     "create_time": "2020-11-10T16:46:34.937",
-    "roles": [1]
+    "roles": []
+  }
+},
+{
+  "model": "xpgg_oms.routes",
+  "pk": 27,
+  "fields": {
+    "route_id": 350,
+    "name": "AutoTools",
+    "path": "/auto-tools",
+    "component": "/layout/Layout",
+    "redirect": "/auto-tools/allow-internet",
+    "alwaysShow": true,
+    "hidden": false,
+    "title": "OP\u5de5\u5177\u96c6",
+    "icon": "tool",
+    "noCache": null,
+    "affix": null,
+    "breadcrumb": null,
+    "activeMenu": null,
+    "parentId": null,
+    "create_time": "2025-01-07T15:46:42.699",
+    "roles": [
+      1
+    ]
+  }
+},
+{
+  "model": "xpgg_oms.routes",
+  "pk": 28,
+  "fields": {
+    "route_id": 360,
+    "name": "AllowInternet",
+    "path": "allow-internet",
+    "component": "/views/auto-tools/AllowInternet",
+    "redirect": null,
+    "alwaysShow": null,
+    "hidden": false,
+    "title": "\u5f00\u901a\u5916\u7f51",
+    "icon": null,
+    "noCache": null,
+    "affix": null,
+    "breadcrumb": null,
+    "activeMenu": null,
+    "parentId": 27,
+    "create_time": "2025-01-07T15:48:24.334",
+    "roles": [
+      1
+    ]
   }
 },
 {
@@ -644,7 +706,7 @@
     "queue": null,
     "exchange": null,
     "routing_key": null,
-    "headers": "",
+    "headers": "{}",
     "priority": null,
     "expires": null,
     "one_off": false,
@@ -671,7 +733,7 @@
     "queue": null,
     "exchange": null,
     "routing_key": null,
-    "headers": "",
+    "headers": "{}",
     "priority": null,
     "expires": null,
     "one_off": false,

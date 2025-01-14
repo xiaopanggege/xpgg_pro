@@ -1,0 +1,318 @@
+centos7 下面：
+
+#svn不要安装默认yum的版本，自己手动安装高一点的
+#首先先查看下有没安装过svn
+rpm -qa subversion
+#如果有记得删除，没有就直接安装,下面安装1.9的
+vim /etc/yum.repos.d/wandisco-svn.repo
+[WandiscoSVN]
+name=Wandisco SVN Repo
+baseurl=http://opensource.wandisco.com/centos/$releasever/svn-1.9/RPMS/$basearch/
+enabled=1
+gpgcheck=0
+
+yum install subversion git rsync tcpdump -y
+
+############################################################
+1、github克隆代码：
+ssh方式：
+# 本机绑定git用户
+git config --global user.name "xiaopanggege"     	 你的名字
+git config --global user.email "175714259@qq.com" 	 你的邮箱
+
+# 忽略ssl证书验证
+git config --global http.sslverify false
+
+# 生成ssh key
+ssh-keygen -t rsa -C "175714259@qq.com"
+
+cat /root/.ssh/id_rsa.pub #复制内容
+到github网站，点击头像里的Settings，左边选择SSH and GPG Keys,点右上角New SSH key ，title随便填，然后key里粘贴上面复制的公钥，点击add key完成
+验证是否成功，在git bash下输入：ssh -T git@github.com
+回车就会看到：You’ve successfully authenticated, but GitHub does not provide shell access 。这就表示已成功连上github
+
+cd /data/www/
+git clone git@github.com:xiaopanggege/xpgg_pro.git
+
+mkdir /srv
+cd /srv
+git clone git@github.com:xiaopanggege/salt_srv_file.git .
+
+##############################################################
+2、python3安装：
+yum install zlib-devel bzip2-devel openssl-devel ncurses-devel sqlite-devel readline-devel tk-devel gcc make libffi-devel
+
+cd /usr/local/src
+wget https://www.python.org/ftp/python/3.6.7/Python-3.6.7.tar.xz
+tar -xf Python-3.6.7.tar.xz
+cd Python-3.6.7
+./configure --prefix=/usr/local/python3.6
+make -j2 && make install
+ln -s /usr/local/python3.6/bin/python3.6 /usr/bin/python3
+ln -s /usr/local/python3.6/bin/pip3.6 /usr/bin/pip3
+
+创建python虚拟环境：
+cd /usr/local/
+python3 -m venv venv_xpgg_pro
+# 启动虚拟环境
+source venv_xpgg_pro/bin/activate 
+# 退出虚拟环境直接输入deactivate
+cd /data/www/xpgg_pro
+# 在虚拟环境中安装项目的依赖包
+yum install python-devel mysql-devel libffi-devel # 因为依赖包mysqlclient需要系统环境支持所以需要先yum安装这些
+pip install -r requirements.txt
+
+############################################################
+3、平台环境配置（）：
+mkdir /data/xpgg_symlink # salt方式同步文件的软连接目录 注意这是在salt-master服务器上面创建
+mkdir /data/xpgg_co      # 实际检出目录					注意这是在rsync服务器上面创建
+mkdir /data/xpgg_tmp	 # 文件服务临时目录				注意这是在web服务器上面创建
+
+mysql安装使用自动安装脚本：创建平台数据库和账号：
+create database xpgg_pro;
+grant all on xpgg_pro.* to 'xiaopgg'@'localhost' identified by 'Password123';
+
+初始化
+cd /usr/local/xpgg_pro/
+python manage.py makemigrations
+python manage.py migrate
+# 因为平台需要有初始化的菜单超级用户等数据，所以需要导入前期做好的备份数据
+python manage.py loaddata init.json  
+# 前期备份命令是python manage.py dumpdata xpgg_oms.MyUser --indent 2 > myuser.json python manage.py dumpdata xpgg_oms.Routes --indent 2 > routes.json等导出不同表数据后自己拼接在一起变成一个init.json
+
+
+
+############################################################
+4、saltstack安装配置：
+rpm --import http://mirrors.ustc.edu.cn/salt/yum/redhat/7/x86_64/archive/2018.3.2/SALTSTACK-GPG-KEY.pub
+
+vim /etc/yum.repos.d/saltstack.repo
+[saltstack-repo]
+name=SaltStack repo for RHEL/CentOS $releasever
+baseurl=http://mirrors.ustc.edu.cn/salt/yum/redhat/$releasever/$basearch/archive/2018.3.2
+enabled=1
+gpgcheck=1
+gpgkey=http://mirrors.ustc.edu.cn/salt/yum/redhat/$releasever/$basearch/archive/2018.3.2/SALTSTACK-GPG-KEY.pub
+
+yum install salt-master salt-api salt-minion salt-ssh salt-cloud salt-syndic -y
+sed -i 's/# ping_on_rotate: False/ping_on_rotate: True/g' /etc/salt/master
+sed -i 's/#master: salt/master: 127.0.0.1/g' /etc/salt/minion
+sed -i 's/#id:/id: master/g' /etc/salt/minion
+sed -i 's/#random_startup_delay: 0/random_startup_delay: 5/g' /etc/salt/minion
+sed -i 's/#ping_interval: 0/ping_interval: 10/g' /etc/salt/minion
+useradd -M -s /sbin/nologin saltapi
+echo '123456' | passwd saltapi --stdin
+
+# salt-api配置文件创建
+vim /etc/salt/master.d/api.conf
+rest_cherrypy:
+  host: 127.0.0.1
+  port: 8080
+  disable_ssl: True
+
+external_auth:
+  pam:
+    saltapi:
+      - .*
+      - '@runner'
+      - '@wheel'
+      - '@jobs'
+
+# 发布平台检出软连接目录目录配置
+vim /etc/salt/master 	
+  
+file_roots:
+  base:
+    - /srv/salt
+  xpgg:
+    - /data/xpgg_symlink
+	
+sed -i 's/#   StrictHostKeyChecking ask/StrictHostKeyChecking no/g' /etc/ssh/ssh_config 
+systemctl enable salt-master.service
+systemctl enable salt-minion.service
+systemctl enable salt-api
+systemctl start salt-api
+systemctl start salt-master
+systemctl start salt-minion
+
+salt-key -a master -y
+
+#测试salt-api：
+salt -a pam '*' test.ping
+
+############################################################
+5、发布系统rsync配置：
+需要开启daemon,注意hosts allow = * 表示允许所有访问，另外注意同步的项目名称是[xpgg_co]的话在/srv/salt/rsync_dir/init.sls文件中需要修改rsync同步对应命令里的项目名称为xpgg_co
+vim /etc/rsyncd.conf 
+
+uid = root
+gid = root
+use chroot = no
+port = 873
+max connections = 2000
+timeout = 200
+log file = /var/run/rsyncd.log
+pid file = /var/run/rsyncd.pid
+lock file = /var/run/rsyncd.lock
+log format = %t %a %m %f %b
+read only = no
+hosts allow = *
+###############################
+[xpgg_co]
+path = /data/xpgg_co/
+list = no
+ignore errors = yes
+#################################################
+[xpgg_tmp]
+path = /data/xpgg_tmp/
+list = no
+ignore errors = yes
+
+centos7下直接用systemctl start rsyncd来启动即可，centos6需要自己弄启动脚本
+systemctl enable rsyncd
+systemctl start rsyncd
+
+
+############################################################
+6、redis安装celery使用：
+yum install gcc -y
+wget http://download.redis.io/releases/redis-4.0.11.tar.gz
+tar xzf redis-4.0.11.tar.gz
+cd redis-4.0.11
+make
+
+然后src目录下的redis-server 和redis-cli软连接设置一下
+ln -s /usr/local/src/redis-4.0.11/src/redis-server /usr/bin/
+ln -s /usr/local/src/redis-4.0.11/src/redis-cli /usr/bin/
+
+运行一个redis实例
+mkdir -p /data/redis/6379 
+cd /data/redis/6379
+把配置文件拷贝到目录下然后手动启动：
+redis-server 6379.conf
+用服务启动：
+# 注意配置文件守护进程模式要关闭，因为服务必须前台运行
+vim /usr/lib/systemd/system/redis.service
+[Unit]
+Description=Redis
+After=syslog.target network.target remote-fs.target nss-lookup.target
+
+[Service]
+Type=simple
+PIDFile=/data/redis/6379/redis.pid
+ExecStart=/usr/bin/redis-server /data/redis/6379/6379.conf
+ExecReload=/bin/kill -USR2 $MAINPID
+ExecStop=/bin/kill -SIGINT $MAINPID
+
+[Install]
+WantedBy=multi-user.target
+
+启动设置
+systemctl daemon-reload
+systemctl enable redis
+systemctl start redis
+
+
+############################################################
+7、守护进程设置：
+yum -y install supervisor
+systemctl enable supervisord
+systemctl start supervisord
+
+vim /etc/supervisord.d/supervisord.ini
+
+# django守护进程：
+[program:django_server_8000]
+command=/usr/local/venv_xpgg_pro/bin/python /data/www/xpgg_pro/manage.py  runserver 0.0.0.0:8000
+directory=/data/www/xpgg_pro
+stdout_logfile=/data/www/xpgg_pro/logs/runserver.log
+stderr_logfile=/data/www/xpgg_pro/logs/runserver.log
+autostart=true
+autorestart=true
+startsecs=10
+stopsignal=KILL
+stopasgroup=true
+
+# celery worker进程
+
+[program:celery_worker]
+command=/usr/local/venv_xpgg_pro/bin/celery -A xpgg_pro worker -l info
+directory=/data/www/xpgg_pro
+stdout_logfile=/data/www/xpgg_pro/logs/celery_worker.log
+stderr_logfile=/data/www/xpgg_pro/logs/celery_worker.log
+autostart=true
+autorestart=true
+startsecs=10
+stopsignal=KILL
+stopasgroup=true
+
+# celery beat进程：
+
+[program:celery_beat]
+command=/usr/local/venv_xpgg_pro/bin/celery -A xpgg_pro beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+directory=/data/www/xpgg_pro
+stdout_logfile=/data/www/xpgg_pro/logs/celery_beat.log
+stderr_logfile=/data/www/xpgg_pro/logs/celery_beat.log
+autostart=true
+autorestart=true
+startsecs=10
+stopsignal=KILL
+stopasgroup=true
+
+生效：
+supervisorctl update
+
+# 上面已经用json导入过了，所以下面这个不需要再执行导入应该可以的，后期如果有重新部署可以验证一下
+#导入初始化数据,因为celery在启动的时候会生成一个crontab的记录和一个task的记录，初始化数据有修改这个task的操作，所以必须等supervisord里celery启动正常后执行
+#cd /data/www/xpgg_pro
+#use xpgg_pro;
+#source init.sql
+
+############################################################
+正式部署步骤django+gunicorn+nginx：
+
+修改settings.py，
+添加：
+STATIC_ROOT = os.path.join(BASE_DIR, 'collected_static')
+修改：
+DEBUG = False
+
+项目目录下执行：
+python manage.py collectstatic
+会生成settings上面设置的静态文件汇总目录collected_static（nginx指定静态文件需要使用到）
+
+安装配置gunicorn：
+pip install gevent gunicorn
+配置supervisor守护进程启动项目（原python manage.py runserver启动的守护进程记得暂停）：
+vim /etc/supervisord.d/xpgg_pro.ini 
+
+[program:xpgg_pro]
+command=/usr/local/python3.6/bin/gunicorn -k gevent -w 2 -b 127.0.0.1:8000 xpgg_pro.wsgi:application --reload
+directory=/data/www/xpgg_pro
+stdout_logfile=/data/www/xpgg_pro/logs/run.log
+stderr_logfile=/data/www/xpgg_pro/logs/run.log
+autostart=true
+autorestart=true
+startsecs=10
+stopsignal=KILL
+stopasgroup=true
+
+# 上面的xpgg_pro.wsgi:application中xpgg_pro是项目名其他固定格式
+然后启动
+
+nginx配置：
+注意好静态文件目录指向上面生成的即可
+location / {
+	  proxy_pass http://127.0.0.1:8000;
+	  proxy_redirect off;
+	  proxy_set_header Host $host;
+	  proxy_set_header X-Real-IP $remote_addr;
+	  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	  access_log logs/www.xpggoms.com.log main;
+             }
+
+location /static/ {
+    alias /data/www/xpgg_pro/collected_static/;
+}
+
+nginx重载生效

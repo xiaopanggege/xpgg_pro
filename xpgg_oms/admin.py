@@ -10,14 +10,14 @@ from xpgg_oms.models import *
 class MyUserAdmin(UserAdmin):
     # 修改一下admin管理页面用户表显示的字段，默认显示什么姓、名我又不需要，奶奶的
     list_display = ('username', 'last_login', 'date_joined', 'is_staff')
-    # 下面就是修改页面显示的字段，我就加了一个自定义信息栏里面显示头像字段，没办法我只加了一个头像字段哈
+    # 下面就是修改页面显示的字段，我就加了一个自定义信息栏里面显示头像字段，没办法我只加了一个头像字段哈,现在多了一个source用户来源字段
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         (_('Personal info'), {'fields': ('first_name', 'last_name', 'email')}),
         (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser',
                                        'groups', 'user_permissions')}),
         (_('Important dates'), {'fields': ('last_login', 'date_joined')}),
-        (_('自定义信息'), {'fields': ('avatar',)}),
+        (_('自定义信息'), {'fields': ('avatar','source',)}),
     )
     # 这个是用户新增的时候显示的字段，我也就加了一个头像嘎嘎
     add_fieldsets = (
@@ -43,3 +43,5 @@ admin.site.register(AppAuth)
 admin.site.register(Routes, MyRoutes)
 admin.site.register(Roles)
 admin.site.register(SystemConf)
+admin.site.register(RuiJieUserInfo)
+admin.site.register(ViewApi)

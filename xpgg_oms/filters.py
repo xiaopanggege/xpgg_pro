@@ -2,7 +2,6 @@
 import django_filters
 from xpgg_oms.models import *
 
-
 # minion管理页面过滤
 class MinionListFilter(django_filters.rest_framework.FilterSet):
     minion_id = django_filters.CharFilter(field_name="minion_id", lookup_expr='icontains')
@@ -11,3 +10,4 @@ class MinionListFilter(django_filters.rest_framework.FilterSet):
     class Meta:
         model = MinionList
         fields = ['minion_id', 'ip', 'sys', 'minion_status']
+

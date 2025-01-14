@@ -1,10 +1,10 @@
 from xpgg_oms.salt_api import SaltAPI
 from xpgg_oms.models import AppRelease, MinionList, AppReleaseLog, AppGroup, AppAuth, MyUser
 from xpgg_oms import tasks
-from .utils import StandardPagination, format_state
+from .utils import format_state
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from xpgg_oms.utils import MyPermission
 from rest_framework import viewsets
 from rest_framework import mixins
 from rest_framework import filters
@@ -80,8 +80,7 @@ class ReleaseModelViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixi
     serializer_class = release_serializers.ReleaseCreateSerializer
     filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
     filter_class = AppReleaseFilter
-    permission_classes = (IsManager, permissions.IsAuthenticated)
-    pagination_class = StandardPagination
+    permission_classes = (IsManager, MyPermission)
 
     # 自定义每页个数
     # pagination_class.page_size = 1
@@ -222,7 +221,7 @@ class ReleaseDeleteViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
     """
     queryset = AppRelease.objects.all()
-    permission_classes = (IsManager, permissions.IsAuthenticated)
+    permission_classes = (IsManager, MyPermission)
     serializer_class = release_serializers.ReleaseDeleteSerializer
 
     def create(self, request, *args, **kwargs):
@@ -1247,7 +1246,7 @@ class ReleaseLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = release_serializers.ReleaseLogModelSerializer
     filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
     filter_fields = ('app_name',)
-    pagination_class = StandardPagination
+    # pagination_class = StandardPagination
 
     # 自定义每页个数
     # pagination_class.page_size = 1
@@ -1293,8 +1292,7 @@ class RealseaGroupViewSet(viewsets.ModelViewSet):
     filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
     filter_class = ReleaseGroupFilter
     # permission_classes默认调用全局权限，手动赋值局部修改权限
-    permission_classes = (IsManager, permissions.IsAuthenticated)
-    pagination_class = StandardPagination
+    permission_classes = (IsManager, MyPermission)
 
     # 自定义每页个数
     # pagination_class.page_size = 1
@@ -1381,7 +1379,6 @@ class ReleaseGroupMemberModelViewSet(mixins.ListModelMixin, viewsets.GenericView
     serializer_class = release_serializers.ReleaseModelSerializer
     filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
     filter_class = AppReleaseFilter
-    pagination_class = StandardPagination
 
     # 自定义每页个数
     # pagination_class.page_size = 1
@@ -1436,8 +1433,7 @@ class RealseaAuthViewSet(viewsets.ModelViewSet):
     serializer_class = release_serializers.ReleaseAuthModelSerializer
     filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
     filter_class = ReleaseAuthFilter
-    permission_classes = (IsManager, permissions.IsAuthenticated)
-    pagination_class = StandardPagination
+    permission_classes = (IsManager, MyPermission)
 
     # 自定义每页个数
     # pagination_class.page_size = 1

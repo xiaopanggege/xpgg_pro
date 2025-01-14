@@ -21,7 +21,7 @@ class MyUserDetailSerializer(serializers.ModelSerializer):
         # 设置继承的数据库
         model = MyUser
         # 设置显示的字段
-        fields = ('id', 'username', 'avatar', 'groups', 'roles', 'is_superuser', 'is_active', 'password', 'email', 'date_joined', 'last_login')
+        fields = ('id', 'username', 'avatar', 'source', 'groups', 'roles', 'is_superuser', 'is_active', 'password', 'email', 'date_joined', 'last_login')
         # 下面这种方式也是用来设置只读之类的
         extra_kwargs = {'password': {'write_only': True, 'style': {'input_type': 'password'}}}
         # fields = "__all__" 取所有字段

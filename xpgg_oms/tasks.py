@@ -36,10 +36,11 @@ def cmd(self, periodic_name='未命名', tgt='*', tgt_type='glob', execute_cmd='
                                                  "runas='root'"])
         # 当调用api失败的时候会返回false
         if response_data['status'] is False:
-            return '任务执行后台出错_error(1)，请联系管理员'
+            raise RuntimeError('任务执行后台出错_error(1)，请联系管理员')
         else:
             response_data = response_data['results']['return'][0]
             return response_data
+
 
 
 # 这个方法还直接提供给SaltKeyViewSet对象调用
@@ -193,3 +194,90 @@ def minion_list(self):
             logger.error('minion列表更新出错，请检查' + time.strftime('%Y-%m-%d %X')+str(e))
             print('minion列表更新出错，请检查' + time.strftime('%Y-%m-%d %X'), e)
             return False
+
+# 全量同步sso用户库
+@shared_task(bind=True, name='sso用户同步入库-全量')
+def sso_user_all(self):
+    try:
+        with requests.Session() as s:
+            response = s.get('http://account.ruijie.net/interface/get_all_user.jhtml')
+            data = response.json()['data']
+            for userinfo in data:
+                # 不直接用**userinfo字典方式来创建用户是怕以后获取内容又新增的话直接套会报错,所以还是新建一个字典来搞
+                data_dict = {}
+                data_dict['UserName'] = userinfo.get('UserName')
+                data_dict['LeaderName'] = userinfo.get('LeaderName')
+                data_dict['UserNum'] = userinfo.get('UserNum')
+                data_dict['DeptCode'] = userinfo.get('DeptCode')
+                data_dict['DeptId'] = userinfo.get('DeptId')
+                data_dict['UserID'] = userinfo.get('UserID')
+                data_dict['LeaderCode'] = userinfo.get('LeaderCode')
+                data_dict['hrDataId'] = userinfo.get('hrDataId')
+                data_dict['Tel'] = userinfo.get('Tel')
+                data_dict['disabled'] = userinfo.get('disabled', True)
+                data_dict['IsLeader'] = userinfo.get('IsLeader', True)
+                data_dict['department'] = userinfo.get('department')
+                data_dict['entryDate'] = datetime.datetime.utcfromtimestamp(userinfo['entryDate']/1000) if 'entryDate' in userinfo else None
+                data_dict['leaveDate'] = userinfo.get('leaveDate')
+                data_dict['conversionDate'] = datetime.datetime.utcfromtimestamp(userinfo['conversionDate']/1000) if 'conversionDate' in userinfo else None
+                data_dict['SuperiorLeaderCode'] = userinfo.get('SuperiorLeaderCode')
+                data_dict['SuperiorLeaderName'] = userinfo.get('SuperiorLeaderName')
+                data_dict['taxAddress'] = userinfo.get('taxAddress')
+                data_dict['userType'] = userinfo.get('userType')
+                data_dict['Status'] = userinfo.get('Status')
+                email = userinfo.get('email')
+                # get_or_create返回元组第一个是对象第二个创建与否True/False
+                user = MyUser.objects.update_or_create(username=data_dict['UserID'],defaults={'email':email,'is_active':not data_dict['disabled'],'source':'锐捷'})
+                # 不用bulk_create批量创建是因为基本只做一次全量,用update_or_create是担心有存在的了
+                RuiJieUserInfo.objects.update_or_create(defaults=data_dict, MyUserId=user[0])
+            print('全量同步sso用户完成')
+            return '全量同步sso用户完成'
+    except Exception as e:
+        print('全量同步sso用户出错了：%s' % e)
+        logger.error('全量同步sso用户出错了：%s' % e)
+        raise RuntimeError('全量同步失败，报错: %s' % e)
+
+
+# 按时间同步sso用户库
+@shared_task(bind=True, name='sso用户同步入库-更新当天用户')
+def sso_user_today(self, old_time=None, new_time=None):
+    try:
+        with requests.Session() as s:
+            # 咨询日常更新就取明天和昨天之间的
+            yesterday = old_time if old_time else (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+            tomorrow = new_time if new_time else (datetime.datetime.now()+datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+            response = s.get('http://account.ruijie.net/interface/get_all_user.jhtml?startModifyDate=%s&endModifyDate=%s' % (yesterday, tomorrow))
+            data = response.json()['data']
+            for userinfo in data:
+                # 不直接用**userinfo字典方式来创建用户是怕以后获取内容又新增的话直接套会报错,所以还是新建一个字典来搞
+                data_dict = {}
+                data_dict['UserName'] = userinfo.get('UserName')
+                data_dict['LeaderName'] = userinfo.get('LeaderName')
+                data_dict['UserNum'] = userinfo.get('UserNum')
+                data_dict['DeptCode'] = userinfo.get('DeptCode')
+                data_dict['DeptId'] = userinfo.get('DeptId')
+                data_dict['UserID'] = userinfo.get('UserID')
+                data_dict['LeaderCode'] = userinfo.get('LeaderCode')
+                data_dict['hrDataId'] = userinfo.get('hrDataId')
+                data_dict['Tel'] = userinfo.get('Tel')
+                data_dict['disabled'] = userinfo.get('disabled', True)
+                data_dict['IsLeader'] = userinfo.get('IsLeader', True)
+                data_dict['department'] = userinfo.get('department')
+                data_dict['entryDate'] = datetime.datetime.utcfromtimestamp(data_dict['entryDate']/1000) if 'entryDate' in data_dict else None
+                data_dict['leaveDate'] = userinfo.get('leaveDate')
+                data_dict['conversionDate'] = datetime.datetime.utcfromtimestamp(data_dict['conversionDate']/1000) if 'conversionDate' in data_dict else None
+                data_dict['SuperiorLeaderCode'] = userinfo.get('SuperiorLeaderCode')
+                data_dict['SuperiorLeaderName'] = userinfo.get('SuperiorLeaderName')
+                data_dict['taxAddress'] = userinfo.get('taxAddress')
+                data_dict['userType'] = userinfo.get('userType')
+                data_dict['Status'] = userinfo.get('Status')
+                email = userinfo.get('email')
+                user = MyUser.objects.update_or_create(username=data_dict['UserID'],defaults={'email':email,'is_active':not data_dict['disabled'],'source':'锐捷'})
+                # 不用bulk_create批量创建是因为基本只做一次全量,用update_or_create是担心有存在的了
+                RuiJieUserInfo.objects.update_or_create(defaults=data_dict, MyUserId=user[0])
+            print('更新同步sso用户完成')
+            return '更新同步sso用户完成'
+    except Exception as e:
+        print('更新同步sso用户出错了：%s' % e)
+        logger.error('更新同步sso用户出错了：%s' % e)
+        raise RuntimeError('更新同步失败，报错: %s' % e)

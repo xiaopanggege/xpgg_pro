@@ -9,7 +9,7 @@ class MyUser(AbstractUser):
     # signal来实现
     avatar = models.ImageField(upload_to='avatar/%Y/%m', max_length=200, verbose_name='用户头像',
                                default='avatar/default.png')
-
+    source = models.CharField(max_length=100, verbose_name='用户来源', blank=True, null=True)
     class Meta:
         verbose_name = '用户'
         verbose_name_plural = verbose_name
@@ -38,7 +38,7 @@ class SaltKeyList(models.Model):
 # minion客户端信息表
 class MinionList(models.Model):
     minion_id = models.CharField(max_length=120, verbose_name='MinionID', primary_key=True)
-    ip = models.CharField(max_length=200, verbose_name='IP地址', blank=True, null=True)
+    ip = models.TextField(verbose_name='IP地址', blank=True, null=True)
     minion_version = models.CharField(max_length=20, verbose_name='Minion版本', blank=True, null=True)
     system_issue = models.CharField(max_length=200, verbose_name='系统版本', blank=True, null=True)
     sn = models.CharField(max_length=200, verbose_name='SN', blank=True, null=True)
@@ -47,8 +47,8 @@ class MinionList(models.Model):
     sys = models.CharField(max_length=200, verbose_name='系统类型', blank=True, null=True)
     kernel = models.CharField(max_length=200, verbose_name='内核', blank=True, null=True)
     product_name = models.CharField(max_length=200, verbose_name='品牌名称', blank=True, null=True)
-    ipv4_address = models.CharField(max_length=900, verbose_name='ipv4地址', blank=True, null=True)
-    mac_address = models.CharField(max_length=900, verbose_name='mac地址', blank=True, null=True)
+    ipv4_address = models.TextField(verbose_name='ipv4地址', blank=True, null=True)
+    mac_address = models.TextField(verbose_name='mac地址', blank=True, null=True)
     localhost = models.CharField(max_length=200, verbose_name='主机名', blank=True, null=True)
     mem_total = models.IntegerField(verbose_name='内存大小', blank=True, null=True)
     create_date = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
@@ -184,7 +184,7 @@ class Roles(models.Model):
 
 # 前端路由表
 class Routes(models.Model):
-    # route_id是用来给逻辑识别菜单从上到下的一个排列顺序用的，方便调整，规定下100以前是一级菜单200以后是二级菜单类推
+    # route_id是用来给逻辑识别菜单从上到下的一个排列顺序用的，所以设置的时候要留有余地免得后期要插入没法插入
     route_id = models.IntegerField(verbose_name='路由优先级ID', unique=True)
     name = models.CharField(max_length=200, verbose_name='路由名称', blank=True, null=True)
     path = models.CharField(max_length=200, verbose_name='路由地址', blank=True, null=True)
@@ -211,7 +211,35 @@ class Routes(models.Model):
         return str(self.path)
 
 
-# 系统参数
+# 整个项目的API表，手动录制
+class ViewApi(models.Model):
+    method_choices = (
+        ('get','get'),
+        ('post','post'),
+        ('put','put'),
+        ('patch','patch'),
+        ('delete','delete'),
+    )
+    name = models.CharField(max_length=250, verbose_name='api名称', unique=True)
+    view_name = models.CharField(max_length=250, verbose_name='视图名称')
+    method = models.CharField(max_length=200, verbose_name='请求类型', choices=method_choices, default='get')
+    default_allow = models.BooleanField(max_length=20, verbose_name='是否默认允许', default=False)
+    description = models.TextField(verbose_name='描述', blank=True, null=True)
+    roles = models.ManyToManyField(Roles, blank=True)
+    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+
+    class Meta:
+        # 复合主键其实就是联合唯一索引,因为必须2个判断唯一，另外这样会自动生成ID主键
+        unique_together = ("view_name", "method")
+        verbose_name = 'API表'
+        verbose_name_plural = verbose_name
+        ordering = ['name']
+
+    def __str__(self):
+        return str(self.name)
+
+
+# 系统参数,暂时没用到
 class SystemConf(models.Model):
     name = models.CharField(max_length=200, verbose_name='参数名称', primary_key=True)
     key = models.CharField(max_length=200, verbose_name='参数键', unique=True)
@@ -227,7 +255,34 @@ class SystemConf(models.Model):
         return str(self.key)
 
 
+# 用户扩展表
+class RuiJieUserInfo(models.Model):
+    UserName = models.CharField(max_length=200, verbose_name='用户名称', blank=True, null=True)
+    LeaderName = models.CharField(max_length=200, verbose_name='专业组长名称', blank=True, null=True)
+    UserNum = models.CharField(max_length=200, verbose_name='工号', blank=True, null=True)
+    DeptCode = models.CharField(max_length=200, verbose_name='专业组编码', blank=True, null=True)
+    DeptId = models.CharField(max_length=200, verbose_name='专业组ID', blank=True, null=True)
+    UserID = models.CharField(max_length=200, verbose_name='casID', blank=True, null=True)
+    LeaderCode = models.CharField(max_length=200, verbose_name='专业组长casID', blank=True, null=True)
+    hrDataId = models.IntegerField(verbose_name='HR系统ID', blank=True, null=True)
+    Tel = models.CharField(max_length=200, verbose_name='联系方式', blank=True, null=True)
+    disabled = models.NullBooleanField(max_length=20, verbose_name='是否禁用(是为禁用)', default=False, blank=True, null=True)
+    IsLeader = models.NullBooleanField(max_length=20, verbose_name='是否领导(否为领导)', default=True, blank=True, null=True)
+    department = models.CharField(max_length=200, verbose_name='二级部门路径', blank=True, null=True)
+    entryDate = models.DateTimeField( verbose_name='入司时间', blank=True, null=True)
+    leaveDate = models.CharField(max_length=200, verbose_name='离职时间', blank=True, null=True)
+    conversionDate = models.DateTimeField( verbose_name='转正时间', blank=True, null=True)
+    SuperiorLeaderCode = models.CharField(max_length=200, verbose_name='上级主管casID', blank=True, null=True)
+    SuperiorLeaderName = models.CharField(max_length=200, verbose_name='上级主管名称', blank=True, null=True)
+    taxAddress = models.CharField(max_length=200, verbose_name='工作地', blank=True, null=True)
+    userType = models.IntegerField(verbose_name='用户类型', blank=True, null=True)
+    Status = models.IntegerField(verbose_name='用户状态', blank=True, null=True)
+    MyUserId = models.OneToOneField(MyUser, on_delete=models.CASCADE)
 
+    class Meta:
+        verbose_name = '用户扩展表'
+        verbose_name_plural = verbose_name
+        ordering = ['id']
 
-
-
+    def __str__(self):
+        return str(self.UserID)

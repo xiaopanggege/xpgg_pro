@@ -1,3 +1,4 @@
+-- 这个没有用到了，直接用的init.json
 INSERT INTO `django_celery_beat_periodictask` (`name`, `task`, `enabled`, `args`, `kwargs`, `description`, `crontab_id`) VALUES ('minion状态检测入库','minion状态检测入库',1,'[]','{}','内置定时更新minion列表',1),('saltkey状态检测入库','saltkey状态检测入库',1,'[]','{}','内置定时更新saltkey信息表',1);
 
 UPDATE `django_celery_beat_periodictask` SET enabled=0 WHERE name='celery.backend_cleanup';

@@ -4,19 +4,26 @@ from rest_framework.views import exception_handler
 from rest_framework.response import Response
 from django.utils import six
 from rest_framework.serializers import Serializer
-from rest_framework.pagination import PageNumberPagination
 from django.utils.six import text_type
 from rest_framework import serializers
 from rest_framework_simplejwt.state import User
 from django.utils.translation import ugettext_lazy as _
-
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.serializers import PasswordField
 from rest_framework_simplejwt.views import TokenObtainPairView
+
+# 邮件发送相关
+from email.header import Header
+from email.mime.text import MIMEText
+from email.utils import parseaddr, formataddr
+import smtplib
+from smtplib import SMTP_SSL
+
 import logging
 logger = logging.getLogger('xpgg_oms.views')
 
-
+# 这个特么都有坑，自义定异常这个不能和其他settings的自定义放一起，放一起其他的都用不了，
+# 所以我只能在上面一层再弄一个utils存settings里的自定义
 # 自定义rest framework的异常捕获返回,在settings里调用
 def custom_exception_handler(exc, context):
     # Call REST framework's default exception handler first,
@@ -176,64 +183,6 @@ class MyResponse(Response):
                 self[name] = value
 
 
-# 分页代码
-class StandardPagination(PageNumberPagination):
-    # 每页显示个数
-    page_size = 1
-    # url中默认修改每页个数的参数名
-    # 比如http://127.0.0.1:8000/api/snippets/?page=1&page_size=4
-    # 就是显示第一页并且显示个数是4个
-    # page_size的变量名称默认如下
-    page_size_query_param = 'page_size'
-    # url中默认是参数名是page下面还是改成page哈
-    page_query_param = "page"
-    # 每页最大个数不超过100
-    max_page_size = 100
-
-    # 自定义数据,
-    msg = None
-
-    def paginate_queryset(self, queryset, request, view=None):
-        """
-        获取分页内容
-        """
-        page_size = self.get_page_size(request)
-        if not page_size:
-            return None
-
-        paginator = self.django_paginator_class(queryset, page_size)
-        page_number = request.query_params.get(self.page_query_param, 1)
-        if page_number in self.last_page_strings:
-            page_number = paginator.num_pages
-        # 重定义错误，默认如果页数page超过分页大小会报错，这里改成超过的话页数变成第一页
-        # page_number是传递进来要展示第几页的页数
-        try:
-            self.page = paginator.page(page_number)
-        except Exception as e:
-            self.page = paginator.page(1)
-
-        if paginator.num_pages > 1 and self.template is not None:
-            # The browsable API should display pagination controls.
-            self.display_page_controls = True
-
-        self.request = request
-        return list(self.page)
-
-    def get_paginated_response(self, data):
-        """
-        设置返回内容格式
-        """
-        return Response({
-            'results': data,
-            'count': self.page.paginator.count,
-            'page_size': self.page.paginator.per_page,
-            'page': self.page.start_index(),
-            'next': self.get_next_link(),
-            'previous': self.get_previous_link(),
-            'msg': self.msg
-        })
-
-
 # salt执行state.sls的返回结果格式化，因为通过api返回的结果不怎么好看呵呵
 def format_state(result):
     a = result['results']
@@ -314,8 +263,52 @@ def format_state(result):
         logger.error('格式化不成功'+str(e))
         return str(a)
 
+# 公共类 邮件发送方法
+class MailSend:
+    def __init__(self,data):
+        self.email = data.get('email')
+        self.password = data.get('password')
+        self.smtp_addr = data.get('smtp_addr')
+        self.smtp_port = data.get('smtp_port')
+        self.security = data.get('security')
+        self.email_name = data.get('email_name', '运维平台邮件助手')
+        self.tmail_name = data.get('tmail_name')
+        self.header = data.get('header', '运维平台来信')
+        self.tmail_name = data.get('tmail_name')
+        self.content = data.get('content', '<h3>这是一封来自运维平台的测试邮件</h3>')
 
+    def _format_addr(self,s):
+        name, addr = parseaddr(s)
+        return formataddr((Header(name, 'utf-8').encode(), addr))
 
+    def send_mail(self):
+        from_addr = self.email
+        password = self.password
+        to_addr = self.tmail_name
+        smtp_server = self.smtp_addr
+
+        msg = MIMEText(self.content, 'html', 'utf-8')
+        msg['From'] = self._format_addr('%s <%s>' % (self.email_name,from_addr))
+        msg['To'] = ','.join(to_addr)  # 用join让每个邮箱分开，不支持列表所以要这样
+        msg['Subject'] = Header('%s' % self.header, 'utf-8').encode()
+
+        try:
+            if 'ssl' in self.security:
+                server = SMTP_SSL(smtp_server, self.smtp_port)
+            else:
+                server = smtplib.SMTP(smtp_server, self.smtp_port)
+                if 'tls' in self.security:
+                    server.starttls()
+            # 登陆
+            server.login(from_addr, password)
+            # 发送
+            server.sendmail(from_addr, to_addr, msg.as_string())
+            # print('发送成功')
+            server.quit()  # 断开和邮件服务器的连接
+            return '发送成功'
+        except Exception as e:
+            # print('发送失败:', e)
+            return '发送失败' + str(e)
 
 
 

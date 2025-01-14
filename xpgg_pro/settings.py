@@ -18,7 +18,9 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 读取配置文件
 conf = configparser.ConfigParser()
-conf.read(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'xpgg_conf.ini'))
+# 明确指定使用utf-8编码方式读取配置文件，能够确保在windwos下读取不会报错gbk编码问题，也能保证在linux下可以正确读取
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'xpgg_conf.ini'), 'r', encoding='utf-8') as f:
+    conf.read_file(f)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
@@ -110,6 +112,7 @@ INSTALLED_APPS = [
     'django_celery_results',
     'django_celery_beat',
     'django_cleanup.apps.CleanupConfig',  # 清理通过model上传的图片或者文件的旧文件，因为默认不会自动删除旧文件
+    'django_cas_ng',  # cas认证
 ]
 
 MIDDLEWARE = [
@@ -121,7 +124,20 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # 'django_cas_ng.middleware.CASMiddleware',  # cas认证 这个中间件不启用，因为这个会强制所有认证都必须跳转cas登录页面，我在前端来完成这个操作了
 ]
+
+# AUTHENTICATION_BACKENDS是一个可选配置默认情况下settings并不包含，默认是ModelBackend，这里要加上CASBackend
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'django_cas_ng.backends.CASBackend',
+)
+
+# cas认证服务地址
+CAS_SERVER_URL = 'https://sid.ruijie.com.cn/'
+CAS_VERSION = '3'
+# 代理地址按实际项目地址来配置，要保证和前端一直哦
+CAS_ROOT_PROXIED_AS = 'http://yfxpgg.ruijie.com.cn'
 
 CORS_ORIGIN_ALLOW_ALL = True
 
@@ -193,20 +209,27 @@ REST_FRAMEWORK = {
     # 认证配置
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # 'xpgg_oms.views.ruijie_sso.MyJWTAuthentication',
         'rest_framework.authentication.BasicAuthentication',
+        # 下面这个是让jwt支持django默认的session认证，按顺序匹配到这个发现本地登录了也能访问，方便多种认证方式并存
         'rest_framework.authentication.SessionAuthentication',
 
     ),
     # 全局权限设置IsAuthenticated为全局都必须登录才能访问，还有其他比如AllowAny就是不限制访问，http://drf.jiuyou.info详细介绍
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
+        # 自定义权限设置，本来放xpgg_oms.views.utils下结果死活不行，单独出来放上层就可以了。。。还在开发中目前还不行哈
+        # 'xpgg_oms.utils.MyPermission',
         # 不限制访问用下面这个,默认不设置就是这个了
         # 'rest_framework.permissions.AllowAny',
     ),
-    # 自定义异常
+    # 自定义异常，必须和其他settings里的自定义分开存放，不然会导致其他都无法使用，比如自定义权限，自定义分页，蛋疼死了
     'EXCEPTION_HANDLER': 'xpgg_oms.views.utils.custom_exception_handler',
     # filter过滤配置
     'DEFAULT_FILTER_BACKENDS': ('django_filters.rest_framework.DjangoFilterBackend',),
+    # 全局自定义分页
+    'DEFAULT_PAGINATION_CLASS': 'xpgg_oms.utils.StandardPagination',
+    # 'PAGE_SIZE': 2  # 分页大小这个没效果因为我在上面自定义分页里头设置了，要改得改里头的page_size
 }
 
 SIMPLE_JWT = {

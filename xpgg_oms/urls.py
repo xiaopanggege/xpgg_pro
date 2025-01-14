@@ -1,7 +1,18 @@
 from django.urls import path, re_path, include
 from django.conf.urls import url
 from rest_framework.routers import DefaultRouter
-from xpgg_oms.views import user, saltstack, release, menus, periodic_task, dashboard
+from xpgg_oms.views import (
+    user,
+    saltstack,
+    release,
+    menus,
+    periodic_task,
+    dashboard,
+    ruijie_user,
+    sysconf,
+    ruijie_telnet,
+    viewapi,
+)
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -11,6 +22,9 @@ from rest_framework.documentation import include_docs_urls
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from xpgg_oms.views.custom_cas import SsoTokenObtainPairView
+from xpgg_oms.views.custom_cas import CustomLoginView
+import django_cas_ng.views
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -26,6 +40,8 @@ router = DefaultRouter()
 # 通过router注册方式配置路由，快准狠,新版base_name改为basename好像
 router.register(r'dashboard', dashboard.DashboardViewSet, basename='dashboard')
 router.register(r'userinfo', user.MyUserViewSet, basename='userinfo')
+router.register(r'personal', user.PersonalViewSet, basename='personal')
+router.register(r'ruijieuserinfo', ruijie_user.RuiJieUserInfoViewSet, basename='ruijie_user')
 router.register(r'saltstack/salt-key', saltstack.SaltKeyViewSet, basename='salt-key')
 router.register(r'saltstack/salt-key-opt/accept', saltstack.SaltKeyAcceptViewSet, basename='salt-key-accept')
 router.register(r'saltstack/salt-key-opt/delete', saltstack.SaltKeyDeleteViewSet, basename='salt-key-delete')
@@ -56,6 +72,7 @@ router.register(r'release-group', release.RealseaGroupViewSet, basename='release
 router.register(r'release-member', release.ReleaseGroupMemberModelViewSet, basename='release-member')
 router.register(r'release-auth', release.RealseaAuthViewSet, basename='release-auth')
 router.register(r'roles', menus.RolesModelViewSet, basename='roles')
+router.register(r'roles-user', menus.RolesUserModelViewSet, basename='roles-user')
 router.register(r'periodic_task/clocked-schedule', periodic_task.ClockedScheduleModelViewSet, basename='clocked-schedule')
 router.register(r'periodic_task/clocked-list', periodic_task.ClockedListModelViewSet, basename='clocked-list')
 router.register(r'periodic_task/crontab-schedule', periodic_task.CrontabScheduleModelViewSet, basename='crontab-schedule')
@@ -65,6 +82,11 @@ router.register(r'periodic_task/interval-list', periodic_task.IntervalListModelV
 router.register(r'periodic_task/periodic-task', periodic_task.PeriodicTaskModelViewSet, basename='periodic-task')
 router.register(r'periodic_task/run-task', periodic_task.RunTaskModelViewSet, basename='run-task')
 router.register(r'periodic_task/task-log', periodic_task.TaskResultScheduleModelViewSet, basename='task-log')
+router.register(r'sysconf/sysconf-base', sysconf.SysConfViewSet, basename='sysconf-base')
+router.register(r'sysconf/email-test', sysconf.EmailTestViewSet, basename='email-test')
+router.register(r'ruijie_telnet/szx-add', ruijie_telnet.RuiJieSZXAddIntnet, basename='szx-add')
+router.register(r'view-api', viewapi.ViewApiViewSet, basename='view-api')
+router.register(r'view-api-all', viewapi.ViewApiAllViewSet, basename='view-api-all')
 
 
 urlpatterns = [
@@ -75,7 +97,13 @@ urlpatterns = [
     # drf登录认证页面
     url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     url(r'^login/$', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    # sso登录这个是我自己写的针对公司个性的sso登录，没有通用性，但对应的SsoTokenObtainPairView可以留作参考，后面换成标准的cas认证了
+    # url(r'^sso-login/$', SsoTokenObtainPairView.as_view(), name='sso_token_obtain_pair'),
     url(r'^api/token/refresh/$', TokenRefreshView.as_view(), name='token_refresh'),
+
+    # cas 认证
+    url(r'^cas-login/$', CustomLoginView.as_view(), name='cas_ng_login'),  # 访问cas服务的登陆
+    url(r'^cas-logout/$', django_cas_ng.views.LogoutView.as_view(), name='cas_ng_logout'),  # 访问cas服务的登出
 
     # 把router注册的路由添加到django的url中，如果有APIView的路由表则使用追加的方式如西面的urlpatterns += router.urls
     # url(r'', include(router.urls)),
@@ -83,7 +111,6 @@ urlpatterns = [
     #  APIView的路由表
     url(r'^users/$', menus.UserList.as_view()),
     url(r'^routes/$', menus.RoutesModel.as_view()),
-    url(r'^passauth/$', user.PassAuth.as_view()),
 ]
 
 
